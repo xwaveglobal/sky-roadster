@@ -278,9 +278,6 @@ export const SCORE = {
   comboMax: 4,
 };
 
-/** v3.0.8 shield: breaks after `hits` obstacles; its timer is `timeMul` of the base (12 s + 4 s per power level) */
-export const SHIELD = { hits: 2, timeMul: 0.7 };
-
 export const POWERUP_DURATION = {
   shield: 0, // shield lasts until hit (upgrades add a timed safety bubble after break)
   magnet: 8,
@@ -312,13 +309,6 @@ export const CLOUD = {
  * `car`: 'mesh' = the 3D XWAVE X1 (src/assets/models/xwave-x1.glb), 'sprite' = the v2 studio image.
  * `?car=sprite` / `?car=mesh` in the page URL override it for comparison.
  */
-/**
- * v3.2 (owner): the race car a little bigger and a little further back toward the camera (visual
- * only — hitboxes unchanged). `scale` = rear-image size, `camBack` = chase-camera distance (was 6.6),
- * `lookUp` = how much higher the camera aims, so the car sits a bit lower on screen and stays framed.
- */
-export const CAR_VIEW = { scale: 1.1, camBack: 6.25, lookUp: 0.14 };
-
 export const RENDER = {
   car: (typeof location !== 'undefined' && /[?&]car=sprite/.test(location.search) ? 'sprite' : 'mesh') as 'mesh' | 'sprite',
   /** model (real-size metres) → game size. 0.76 ≈ 1.66 m wide: close to the 1.4 m hitbox, and the rear

@@ -1,59 +1,52 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { Spring, clamp, clamp01, lerp } from '../core/math.ts';
-import { CAR_VIEW, HEIGHT, TYRE } from '../config.ts';
+import { CAR_HALF, HEIGHT, RENDER, TYRE } from '../config.ts';
+import { MeshCar } from './car/MeshCar.ts';
+import { carHeight, isAirborne } from './car/carMotion.ts';
+import { CrashFx } from './car/CarFx.ts';
 import { OVERLAY_LAYER } from './Renderer.ts';
+// v4.6 cleanup: the pre-3D studio renders (8 views, boost look, Vega rear, aura, tyre masks ≈ 760 KB)
+// are gone; the rear-image fallback (only drawn if the 3D model can't load, or with ?car=sprite) now
+// uses the 3D car's own rear render and procedural masks
+import x1Back from '../assets/images/cars/rear-zenith.webp';
+import vegaBack from '../assets/images/cars/rear-vega.webp';
+const x1BackBoost = x1Back;
 import { glowTexture, logoTexture, rearBadgeTexture, treadTexture, wheelBlurTexture, wheelFaceTexture } from './textures.ts';
 import { mergeByMaterial } from './merge.ts';
 import type { Player } from '../gameplay/Player.ts';
-import x1Back from '../assets/images/car/x1-back.webp';
-import x1BackBoost from '../assets/images/car/x1-back-boost.webp';
-import vegaBack from '../assets/images/car/vega-back.webp';
-import x1TyreFx from '../assets/images/car/x1-tyrefx.png';
-import x1Tread from '../assets/images/car/x1-tread.png';
 
 /** tread mask (R) + original tyre shading (G) for the rear render, and the tileable tread texture */
 let _fx: THREE.Texture | null = null;
 let _tread: THREE.Texture | null = null;
+/** empty mask (no tread / tyre shading overlay on the fallback rear image) */
+function blankTex() {
+  const t = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+  t.needsUpdate = true;
+  return t;
+}
 function tyreFxTex() {
   if (_fx) return _fx;
-  _fx = new THREE.TextureLoader().load(x1TyreFx);
+  _fx = blankTex();
   _fx.colorSpace = THREE.NoColorSpace;
   return _fx;
 }
 function treadTex() {
   if (_tread) return _tread;
-  _tread = new THREE.TextureLoader().load(x1Tread);
+  _tread = blankTex();
   _tread.colorSpace = THREE.NoColorSpace;
   _tread.wrapS = THREE.ClampToEdgeWrapping;
   _tread.wrapT = THREE.RepeatWrapping;
   _tread.anisotropy = 4;
   return _tread;
 }
-import x1BackLeft from '../assets/images/car/x1-backleft.webp';
-import x1BackRight from '../assets/images/car/x1-backright.webp';
-import x1Left from '../assets/images/car/x1-left.webp';
-import x1Right from '../assets/images/car/x1-right.webp';
-import x1Front from '../assets/images/car/x1-front.webp';
-import x1FrontLeft from '../assets/images/car/x1-frontleft.webp';
-import x1FrontRight from '../assets/images/car/x1-frontright.webp';
-import x1Aura from '../assets/images/car/x1-aura.webp';
 
 /**
  * XWAVE X1 rendered from the studio renders: 8 views around the car (45° apart).
  * index 0 = seen from behind, going clockwise seen from above (behind-right, right, …).
  * h = on-screen height of that view in metres (the car is ~1.1 m tall).
  */
-const X1_VIEWS: { url: string; h: number }[] = [
-  { url: x1Back, h: 1.12 },
-  { url: x1BackRight, h: 1.22 },
-  { url: x1Right, h: 1.15 },
-  { url: x1FrontRight, h: 1.22 },
-  { url: x1Front, h: 1.12 },
-  { url: x1FrontLeft, h: 1.22 },
-  { url: x1Left, h: 1.15 },
-  { url: x1BackLeft, h: 1.22 },
-];
+const X1_VIEWS: { url: string; h: number }[] = Array.from({ length: 8 }, () => ({ url: x1Back, h: 1.12 }));
 
 export type CarShape = 'gt' | 'wedge' | 'muscle' | 'bubble' | 'cyber';
 
@@ -75,7 +68,7 @@ export interface VehicleSkin {
   rarity?: 'Common' | 'Rare' | 'Epic' | 'Legendary' | 'Mythic' | 'Ultimate';
   /** rank class required before the car can be bought */
   need?: string;
-  /** v4.6 (Step 06.5): a configured future car with no unlock condition yet — always a locked dark silhouette */
+  /** Step 06.5: a configured future car with no unlock condition yet — always a locked dark silhouette */
   future?: boolean;
   /** score bonus in % while driving this car */
   bonus?: number;
@@ -89,14 +82,15 @@ export interface VehicleSkin {
 }
 
 /**
- * Class unlocks (v4.6 owner update): D = the starter car; C / B / A = no new car; AA = XWAVE
+ * Class unlocks (Step 06.5, v4.6 owner update): D = the starter car; C / B / A = no new car; AA = XWAVE
  * Inferno; AAA = XWAVE Nexus; S / SS / SSS = Vega / Volt / Phantom. Every car not owned yet is a dark
  * locked silhouette (AA and AAA included) until its rank is reached.
  * Cars a player already owns are never taken away (unlocks only ever add).
  */
 export const SKINS: VehicleSkin[] = [
-  { id: 'zenith', name: 'XWAVE Zenith', shape: 'gt', cls: 'Common · Balanced for every run', rarity: 'Common', need: 'D', price: 0, bonus: 0, tintAmt: 0,
-    body: 0xf3f5fa, trim: 0xb9c2d3, glass: 0x0a0d16, glow: 0x39b6ff, accent: 0x1c64ff, stats: [7, 7, 8, 7],
+  { id: 'zenith', name: 'XWAVE Zenith', shape: 'gt', cls: 'Common · Balanced for every run', rarity: 'Common', need: 'D', price: 0, bonus: 0, tintAmt: 1,
+    // v4.6.1: ice-blue paint (owner choice) so Zenith no longer looks like Vega's white
+    body: 0x7cc0ec, trim: 0x9fb6cc, glass: 0x0a0d16, glow: 0x39b6ff, accent: 0x1c64ff, stats: [7, 7, 8, 7],
     skills: [{ name: 'Turbo Boost', desc: 'Short burst of high speed.' }, { name: 'Stable Flight', desc: 'Easier to control.' }] },
   { id: 'inferno', name: 'XWAVE Inferno', shape: 'gt', cls: 'Rare · Burn through everything', rarity: 'Rare', need: 'AA', price: 0, bonus: 0, tintAmt: 0.92,
     body: 0xc4121f, trim: 0x1a1a1a, glass: 0x0a0202, glow: 0xff3b2a, accent: 0xff6a2a, stats: [10, 9, 8, 8],
@@ -104,7 +98,6 @@ export const SKINS: VehicleSkin[] = [
   { id: 'nexus', name: 'XWAVE Nexus', shape: 'gt', cls: 'Epic · The next evolution', rarity: 'Epic', need: 'AAA', price: 0, bonus: 0, tintAmt: 0.35,
     body: 0xdfe8ff, trim: 0xc9d2e6, glass: 0x0b1830, glow: 0x3cf2ff, accent: 0xd04dff, stats: [10, 10, 10, 10],
     skills: [{ name: 'Gravity Control', desc: 'Switches flight height freely for 5 seconds.' }, { name: 'Dimension Dash', desc: 'Teleports forward a short distance.' }] },
-
   { id: 'vega', name: 'XWAVE Vega', shape: 'gt', cls: 'Legendary · Red-line racer', rarity: 'Legendary', need: 'S', price: 0, bonus: 0, tintAmt: 0, rear: vegaBack,
     body: 0xf3f5fa, trim: 0xb9c2d3, glass: 0x0a0d16, glow: 0xff3b4e, accent: 0xff3b4e, stats: [8, 7, 8, 7] },
   { id: 'volt', name: 'XWAVE Volt', shape: 'gt', cls: 'Mythic · Speed beyond limits', rarity: 'Mythic', need: 'SS', price: 0, bonus: 0, tintAmt: 0.92,
@@ -122,11 +115,12 @@ export const SKINS: VehicleSkin[] = [
  */
 export function carVisibility(unlocked: string[], id: string): 'own' | 'next' | 'dark' {
   if (unlocked.includes(id)) return 'own';
-  // v4.6 (owner): every car not owned yet — AA and AAA included — is a black silhouette until it is unlocked
+  // v4.6 (owner): every car not owned yet — AA and AAA included — is a black silhouette (no colours,
+  // no materials) until it is unlocked
   return 'dark';
 }
 
-/** cars a rank unlocks (v4.6 matrix): never a future car */
+/** cars a rank unlocks (Step 06.5 matrix): never a future car */
 export function carsForRank(rankAtLeast: (need: string) => boolean): string[] {
   return SKINS.filter((k) => !k.future && rankAtLeast(k.need ?? 'D')).map((k) => k.id);
 }
@@ -269,6 +263,7 @@ export class Vehicle {
   /** extra spin for celebration barrel roll (radians remaining) */
   private celebrate = 0;
   private flameColor = new THREE.Color();
+  private glowC = new THREE.Color(); // v4.6 perf: reused every frame (no allocation)
   private wheelAngle = 0;
   private wheelBlurMat!: THREE.MeshBasicMaterial;
   visibleBlink = true;
@@ -278,6 +273,11 @@ export class Vehicle {
   private customRear: THREE.Texture | null = null;
   private customAspect = 2;
   private static rearCache = new Map<string, { tex: THREE.Texture; aspect: number }>();
+  /** v4: the 3D X1 (null in sprite mode); meshOn = it is the car on screen */
+  private mesh: MeshCar | null = null;
+  private meshOn = false;
+  /** called once the 3D model has loaded and replaced the rear image (the game re-checks its cameras) */
+  onModelReady: (() => void) | null = null;
   /** camera the X1 sprite turns to face (set by the game) */
   camera: THREE.Camera | null = null;
   /** always show the high-res rear render (cameras stay behind the car) */
@@ -293,6 +293,8 @@ export class Vehicle {
   shieldTarget = 0;
   private shieldK = 0;
   private shieldHitK = 0;
+  /** v4.1.4: 0..1 Turbo aura (set by the game while Turbo smashes obstacles) */
+  turboTarget = 0;
   /** 0..1 boost burst target (turbo / launch), current value */
   boostTarget = 0;
   private boostK = 0;
@@ -304,6 +306,7 @@ export class Vehicle {
     this.shieldK = 0;
     this.shieldHitK = 0;
     this.boostTarget = 0;
+    this.turboTarget = 0;
     this.boostK = 0;
     this.boostHold = 0;
     this.dome.visible = false;
@@ -312,15 +315,31 @@ export class Vehicle {
     this.sprite.material.uniforms.fade.value = 1;
     this.boostSprite.material.uniforms.fade.value = 0;
     this.suspY = this.suspV = 0;
+    if (this.mesh) {
+      this.mesh.nitro = 0;
+      this.mesh.shield = 0;
+      this.mesh.aura.reset();
+      this.mesh.turbo = 0;
+      this.mesh.turboAura.reset();
+      this.mesh.setGhost(0);
+    }
   }
   /** flash the dome when it absorbs a hit */
   shieldHit() {
     this.shieldHitK = 1;
+    this.mesh?.aura.flash();
   }
   /** a short burst of rear light (speed-up moments) */
   boostKick(k = 1) {
     this.boostHold = Math.max(this.boostHold, 0.55 * k); // hold the boost look briefly, then release smoothly
+    if (this.meshOn) this.mesh!.sweep(0x8fe8ff);
   }
+  /** v4.1.3: a power-up was picked up — a short light sweep over the 3D car in the item's colour */
+  pickupSweep(color: number) {
+    if (this.meshOn) this.mesh!.sweep(color);
+  }
+  /** v4.1.3 3D crash pieces + impact flash (world space: Game adds `crash.group` to the scene) */
+  crash = new CrashFx();
   private boostHold = 0;
   private treadPhase = 0;
   private wheelV = 0;
@@ -649,6 +668,15 @@ export class Vehicle {
         o.receiveShadow = false;
       }
     });
+    // v4: the 3D XWAVE X1 (loads in the background; the rear image is shown until it is ready)
+    if (RENDER.car === 'mesh') {
+      this.mesh = new MeshCar();
+      this.squashG.add(this.mesh.root);
+      this.mesh.onReady = () => {
+        this.setSkin(this.skin, this.locked);
+        this.onModelReady?.();
+      };
+    }
     // remember every material's look so a locked (dark) preview can be undone
     this.root.traverse((o) => {
       const m = (o as THREE.Mesh).material as THREE.Material | THREE.Material[] | undefined;
@@ -923,8 +951,7 @@ export class Vehicle {
     this.jetG.visible = false;
     this.squashG.add(this.jetG);
     // power-up aura: rim light + soft halo + a few energy wisps, generated from the rear render's outline
-    const at = new THREE.TextureLoader().load(x1Aura);
-    at.colorSpace = THREE.SRGBColorSpace;
+    const at = glowTexture();
     this.aura = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: at, transparent: true, depthWrite: false, opacity: 0, toneMapped: false }));
     this.aura.renderOrder = 4;
     this.aura.visible = false;
@@ -939,12 +966,19 @@ export class Vehicle {
     return { tex: u.map.value as THREE.Texture, tint: u.tint.value as THREE.Color, tintAmt: u.tintAmt.value as number, matrix: this.sprite.matrixWorld.clone() };
   }
 
+  /** what the player sees as the car (3D model or rear image) — debug overlay */
+  get visualObject(): THREE.Object3D | null {
+    if (this.mesh && this.meshOn) return this.mesh.root;
+    return this.spriteOn ? this.sprite : null;
+  }
+
   get usesSprite() {
     return this.spriteOn;
   }
 
   /** world position of jet i's nozzle (for energy particles) */
   jetWorld(i: number, out: THREE.Vector3) {
+    if (this.mesh && this.meshOn) return this.mesh.socketWorld(i, out);
     const j = this.jets[i % this.jets.length];
     out.set(0, -0.05, 0);
     return j.localToWorld(out);
@@ -970,7 +1004,7 @@ export class Vehicle {
       if (own && this.skin.rear) this.customAspect = Vehicle.rearCache.get(this.skin.rear)?.aspect ?? this.customAspect;
       this.sprite.material.uniforms.map.value = own ? this.customRear : this.spriteTex[view];
       this.sprite.material.uniforms.rearView.value = view === 0 ? 1 : 0;
-      const h = X1_VIEWS[view].h * CAR_VIEW.scale;
+      const h = X1_VIEWS[view].h;
       this.sprite.scale.set(h * (own ? this.customAspect : this.spriteAspect[view]), h, 1);
     }
     const h = this.sprite.scale.y;
@@ -1038,6 +1072,13 @@ export class Vehicle {
   }
 
   /** @param locked garage preview of a car not owned yet: dark silhouette */
+  /** v4.6: 3D car size multiplier (fixed camera view draws it a little bigger) — visual only */
+  private carK = 1;
+  setCarSize(k: number) {
+    this.carK = k;
+    this.mesh?.setScaleK(k);
+  }
+
   setSkin(skin: VehicleSkin, locked = false) {
     this.skin = skin;
     // restore every material, apply the colourway, then darken everything if locked
@@ -1053,10 +1094,20 @@ export class Vehicle {
     // the original coupe shell is retired: the XWAVE X1 body ('gt') is built in buildShape()
     for (const p of this.shellParts) p.visible = false;
     for (const [k2, sg] of Object.entries(this.shapes)) sg!.visible = k2 === skin.shape;
+    // v4: the 3D X1 replaces the studio renders once it has loaded
+    this.meshOn = !!this.mesh?.ready && skin.shape === 'gt';
+    if (this.mesh) {
+      this.mesh.root.visible = this.meshOn;
+      if (this.meshOn) {
+        this.shapes.gt!.visible = false;
+        this.mesh.applySkin(skin, locked);
+        this.mesh.setScaleK(this.carK);
+      }
+    }
     // the GT colourways are drawn from the X1 studio renders (pearl = original paint)
-    this.spriteOn = skin.shape === 'gt';
+    this.spriteOn = skin.shape === 'gt' && !this.meshOn;
     this.sprite.visible = this.spriteOn;
-    this.contactShadow.visible = this.spriteOn;
+    this.contactShadow.visible = this.spriteOn || this.meshOn;
     if (this.spriteOn) {
       this.shapes.gt!.visible = false;
       const u = this.sprite.material.uniforms;
@@ -1083,9 +1134,9 @@ export class Vehicle {
       this.customAspect = c.aspect;
     }
     this.spriteView = -1; // re-pick the texture for this car
-    for (const pod of this.pods) pod.pivot.visible = !this.spriteOn;
-    for (const w of this.wings) w.visible = !this.spriteOn;
-    this.underglow.visible = !this.spriteOn;
+    for (const pod of this.pods) pod.pivot.visible = !this.spriteOn && !this.meshOn;
+    for (const w of this.wings) w.visible = !this.spriteOn && !this.meshOn;
+    this.underglow.visible = !this.spriteOn && !this.meshOn;
   }
 
   /** Procedural alternative bodies (same footprint, pods at the four corners). */
@@ -1279,6 +1330,8 @@ export class Vehicle {
     this.celebrate = this.celebrateTotal;
   }
   private celebrateTotal = Math.PI * 2;
+  /** current AIR DASH roll angle (rad, 0 … ±2π) — tests / captures */
+  airDashRollAngle = 0;
   private celebrateDir = 1;
   private celebrateSpeed = 9;
 
@@ -1287,7 +1340,87 @@ export class Vehicle {
   showcase: { kind: 'ghost' | 'wall' | 'rail' | 'tunnel'; e: number } | null = null;
   private ghostHid = false;
 
+  /**
+   * Crash presentation (visual only): the 3D nose reaches ahead of the gameplay hitbox, so at the
+   * moment of a hit the obstacle would sit inside the hood. Set the body back by that overhang so the
+   * nose meets the obstacle face. Collision timing is untouched; cleared by resetPose().
+   */
+  crashRecoil() {
+    if (!this.mesh || !this.meshOn) return;
+    this.recoilZ = this.mesh.noseOverhang;
+    this.mesh.root.position.z = this.recoilZ;
+  }
+  private recoilZ = 0;
+
+  /**
+   * v4.1.3 3D crash presentation (visual only): body jolt on its springs, impact flash at the nose,
+   * a few pooled shards. The car stays whole and visible.
+   */
+  crashBreak(final = false) {
+    if (!this.mesh || !this.meshOn) return;
+    this.mesh.crashJolt();
+    this.mesh.root.updateWorldMatrix(true, false);
+    const at = this.tmpV3.set(0, 0.42, -CAR_HALF.z).applyMatrix4(this.mesh.root.matrixWorld);
+    this.crash.burst(at, this.skin.tintAmt ? this.skin.body : 0xf3f2ee);
+    // Step 06.5: drop to the road from wherever the crash happened (no floating), a few parts break off
+    this.fallV = 0;
+    this.fallGround = carHeight(HEIGHT.NORMAL, HEIGHT.LOW, HEIGHT.NORMAL, HEIGHT.HIGH, CAR_HALF.y, true, RENDER.airAlignRamp);
+    this.falling = this.root.position.y > this.fallGround + 0.01;
+    if (final && this.root.parent) this.mesh.breakParts(this.root.parent, RENDER.crashFall.parts);
+  }
+  private fallV = 0;
+  private fallGround = 0;
+  private falling = false;
+  /** visual crash height above the road (0 = settled on the road) — tests / captures */
+  get crashAirborne() {
+    return this.root.position.y - this.fallGround;
+  }
+  /** while dying / on the game-over screen: the 3D body falls to the road and settles, debris flies (Game calls this) */
+  crashUpdate(dt: number, roadSpeed = 0) {
+    if (this.mesh && this.meshOn) {
+      this.mesh.settle(dt);
+      const F = RENDER.crashFall;
+      if (this.falling) {
+        this.fallV -= F.gravity * dt;
+        this.root.position.y += this.fallV * dt;
+        // nose dips while it drops, levels out on the road
+        this.pitch.rotation.x = lerp(this.pitch.rotation.x, F.tilt, clamp01(dt * 6));
+        if (this.root.position.y <= this.fallGround) {
+          this.root.position.y = this.fallGround;
+          if (this.fallV < -2.5) {
+            this.fallV = -this.fallV * F.bounce;
+            this.mesh.crashJolt();
+          } else {
+            this.fallV = 0;
+            this.falling = false;
+          }
+        }
+      } else this.pitch.rotation.x = lerp(this.pitch.rotation.x, 0, clamp01(dt * 5));
+      this.mesh.updateParts(dt, roadSpeed, F.gravity);
+      // a wrecked car has no flight jets; its contact shadow stays on the road under it
+      this.jetG.visible = false;
+      this.contactShadow.position.y = -this.root.position.y + 0.025;
+      (this.contactShadow.material as THREE.MeshBasicMaterial).opacity = clamp(0.62 - (this.root.position.y - this.fallGround) * 0.25, 0.12, 0.62);
+    }
+    this.crash.update(dt);
+  }
+  /** compile the 3D car's effect variants once the model is ready (no shader compile mid-race) */
+  prewarm(renderer: THREE.WebGLRenderer, scene: THREE.Object3D, camera: THREE.Camera) {
+    if (!this.mesh || !this.meshOn) return;
+    for (const p of this.crashPieces) p.visible = true;
+    this.mesh.prewarm(renderer, scene, camera);
+    this.crash.clear();
+  }
+  private get crashPieces() {
+    return this.crash.group.children;
+  }
+
   resetPose() {
+    this.recoilZ = 0;
+    this.falling = false;
+    this.fallV = 0;
+    this.crash.clear();
+    this.mesh?.resetPose();
     this.roll.snap(0);
     this.yaw.snap(0);
     this.pitchS.snap(0);
@@ -1306,12 +1439,8 @@ export class Vehicle {
     const t = this.time;
     // gameplay height -> visual height: on the road the wheels touch the asphalt,
     // tucked (LOW) the belly skims it, airborne it rises with the hitbox
-    const vy =
-      p.y <= HEIGHT.NORMAL
-        ? lerp(0.3, 0.51, clamp01((p.y - HEIGHT.LOW) / (HEIGHT.NORMAL - HEIGHT.LOW)))
-        : p.y <= HEIGHT.HIGH
-          ? lerp(0.51, 3.35, clamp01((p.y - HEIGHT.NORMAL) / (HEIGHT.HIGH - HEIGHT.NORMAL)))
-          : 3.35 + (p.y - HEIGHT.HIGH);
+    // (3D car, v4.1.3: once airborne the underside never hangs below the hitbox — carMotion.carHeight)
+    const vy = carHeight(p.y, HEIGHT.LOW, HEIGHT.NORMAL, HEIGHT.HIGH, CAR_HALF.y, this.meshOn, RENDER.airAlignRamp);
     this.root.position.set(p.x, vy, 0);
     // v2 Bonus showcase specials (wall run / sky rail / tunnel roof / phase ghost)
     const sc = this.showcase;
@@ -1340,7 +1469,8 @@ export class Vehicle {
     const lat = clamp(p.vx / laneSpeed, -1.4, 1.4);
     // on the road: a car-like lean and steer; in the air: the full 15° bank
     // the car stays upright and points straight down the road; only a light bank on lane changes
-    this.roll.target = lat * lerp(0.07, 0.11, p.air) + Math.sin(t * 1.7) * 0.008 * p.air;
+    // (3D car: almost no whole-car bank on the road — its sprung body rolls instead, wheels stay planted)
+    this.roll.target = lat * lerp(this.meshOn ? 0.015 : 0.07, 0.11, p.air) + Math.sin(t * 1.7) * 0.008 * p.air;
     this.yaw.target = -lat * 0.035;
     const vVel = dt > 0 ? (p.y - this.lastY) / dt : 0;
     this.lastY = p.y;
@@ -1350,6 +1480,15 @@ export class Vehicle {
     this.yaw.update(dt);
     this.pitchS.update(dt);
     let extraRoll = 0;
+    // Step 06.5 AIR DASH: exactly one sideways roll (around the car's length axis), locked to the
+    // gameplay maneuver's progress — 0 → 360° while it crosses the two lanes, ends exactly upright
+    if (p.isAirDash) {
+      const k = p.airDashRoll;
+      const e = k * k * (3 - 2 * k);
+      this.airDashRollAngle = Math.PI * 2 * e * -p.airDashDir;
+      extraRoll = this.airDashRollAngle;
+      this.celebrate = 0;
+    } else this.airDashRollAngle = 0;
     if (this.celebrate > 0) {
       const step = Math.min(this.celebrate, dt * this.celebrateSpeed);
       this.celebrate -= step;
@@ -1364,7 +1503,8 @@ export class Vehicle {
     this.pitch.position.y = road + Math.sin(t * 3.2) * 0.04 * p.air;
 
     // ---- squash & stretch
-    const sq = p.squash;
+    // (3D car: the dive is drawn by MeshCar — wheels fold, body drops — so only the launch stretch here)
+    const sq = this.meshOn ? Math.min(0, p.squash) : p.squash;
     const sy = 1 - sq * 0.55;
     const sxz = 1 + sq * 0.18;
     this.squashG.scale.set(sxz, sy, sxz * (1 + turbo * 0.06));
@@ -1381,7 +1521,7 @@ export class Vehicle {
 
     // ---- pods: wheels on the road, thrusters in the air, tucked away when diving
     this.flameColor.copy(BLUE).lerp(ORANGE, p.orange);
-    if (this.skin.id !== 'pearl') this.flameColor.lerp(new THREE.Color(this.skin.glow), 0.35 * (1 - p.orange));
+    if (this.skin.id !== 'pearl') this.flameColor.lerp(this.glowC.setHex(this.skin.glow), 0.35 * (1 - p.orange));
     if (this.locked) this.flameColor.multiplyScalar(0.1);
     const air = p.air;
     const wheel = 1 - air;
@@ -1438,7 +1578,7 @@ export class Vehicle {
     ug.color.copy(this.flameColor);
 
     // energy jets: only in the air (take-off → landing), stronger on rocket flights; steady, no flicker
-    const jetK = this.spriteOn ? Math.max(clamp01((p.air - 0.08) / 0.5), turbo > 0 ? clamp01(turbo * 2) : 0) : 0;
+    const jetK = this.spriteOn || this.meshOn ? Math.max(clamp01((p.air - 0.08) / 0.5), turbo > 0 ? clamp01(turbo * 2) : 0) : 0;
     this.jetG.visible = jetK > 0.01 && !this.locked;
     if (this.jetG.visible) {
       const len = (1.15 + p.engine * 0.6 + (p.isSuper ? 0.9 : 0) + (turbo > 0 && p.air < 0.4 ? 0.5 : 0)) * jetK;
@@ -1575,6 +1715,25 @@ export class Vehicle {
       this.suspY += this.suspV * dt;
       this.suspY = Math.max(-S.max, Math.min(S.max, this.suspY));
       this.sprite.position.y += this.suspY;
+    }
+    // ---- v4 3D car: wheels, sprung body, nitro flames from the rear sockets
+    if (this.mesh && this.meshOn) {
+      const ground = vy < 0.51 ? -vy : -0.51;
+      this.mesh.root.position.set(0, ground, this.recoilZ);
+      this.mesh.nitro = Math.max(clamp01(this.boostK), turbo);
+      // Bonus Phase Ghost: the 3D car turns translucent with a cyan edge (materials restored after)
+      this.mesh.setGhost(this.showcase?.kind === 'ghost' ? this.showcase.e : 0);
+      this.mesh.shield = this.shieldTarget;
+      this.mesh.turbo = this.turboTarget;
+      // DOWN: how deep the dive is (gameplay squash while diving) → wheels fold, body drops
+      const duck = p.vmode === 'down' ? clamp01(p.squash / 0.32) : 0;
+      this.mesh.update(dt, speed, lat, p.air, this.locked, isAirborne(p.vmode, p.y, HEIGHT.NORMAL), duck);
+      // flight jets hang under the rear of the car; the contact shadow stays on the road
+      this.jetG.position.set(0, ground + 0.3, 0.75);
+      this.contactShadow.position.y = -vy + 0.025;
+      const sm = this.contactShadow.material as THREE.MeshBasicMaterial;
+      sm.opacity = clamp(0.6 - Math.max(0, vy - 0.51) * 0.18, 0.12, 0.6);
+      this.contactShadow.scale.set(0.85, 1, 1.05);
     }
     this.root.visible = this.visibleBlink;
   }

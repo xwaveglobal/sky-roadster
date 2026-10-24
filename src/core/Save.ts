@@ -1,4 +1,3 @@
-import { kv } from './kv.ts';
 import type { CareerStats } from '../meta/Career.ts';
 /** Persistent player profile in localStorage (wrapped: storage can be blocked). */
 
@@ -172,37 +171,10 @@ const defaults = (): SaveData => ({
   perks: {},
 });
 
-/**
- * v3: where the save lives. Web = localStorage; the native TikTok build plugs in the HS profile
- * (src/native/save.ts) — `bind` then ties wallet / items to the profile's own fields.
- */
-export interface SaveBackend {
-  read(): string | null;
-  write(json: string, s: SaveData): void;
-  bind?(s: SaveData): void;
-}
-let backend: SaveBackend = {
-  read: () => kv.get(KEY),
-  write: (json) => kv.set(KEY, json),
-};
-export function setSaveBackend(b: SaveBackend) {
-  backend = b;
-}
-
 export function loadSave(): SaveData {
-  const s = loadSaveRaw();
-  try {
-    backend.bind?.(s);
-  } catch (e) {
-    console.warn('save bind', e);
-  }
-  return s;
-}
-
-function loadSaveRaw(): SaveData {
   const d = defaults();
   try {
-    const raw = backend.read();
+    const raw = localStorage.getItem(KEY);
     if (!raw) return d;
     const p = JSON.parse(raw) as Partial<SaveData>;
     // defaults refresh (v1.10): HIGH graphics, music and sound ON — applied once to old saves
@@ -247,7 +219,7 @@ function loadSaveRaw(): SaveData {
 
 export function writeSave(s: SaveData) {
   try {
-    backend.write(JSON.stringify(s), s);
+    localStorage.setItem(KEY, JSON.stringify(s));
   } catch {
     /* storage unavailable — progress lives for this session only */
   }

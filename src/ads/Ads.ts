@@ -34,19 +34,13 @@ export const ADS = {
   continueSeconds: 7,
 };
 
-export interface AdProvider {
+interface AdProvider {
   readonly name: string;
   rewarded(placement: RewardPlacement): Promise<boolean>;
   interstitial(placement: InterPlacement): Promise<void>;
 }
 
 type AdBreakFn = (o: Record<string, unknown>) => void;
-
-/** v3 native: the platform's own ad provider (HSGame.showAd) — set before the Game is created */
-let platformProvider: AdProvider | null = null;
-export function setAdProvider(p: AdProvider) {
-  platformProvider = p;
-}
 
 /** Google Ad Placement API (H5 Games Ads). */
 class H5GamesAdsProvider implements AdProvider {
@@ -136,38 +130,6 @@ class MockAdProvider implements AdProvider {
   }
 }
 
-/**
- * v3.0.11: never wait forever on a platform ad. If the platform's promise is lost (an ad that
- * fails to load / close event never delivered), `showing` used to stay true and every later ad
- * button — Revive included — silently did nothing, and a lost interstitial froze the game-over
- * buttons. A generous cap settles it instead.
- */
-function capped<T>(p: Promise<T>, ms: number, fallback: T): Promise<T> {
-  return new Promise<T>((resolve) => {
-    let done = false;
-    const t = setTimeout(() => {
-      if (done) return;
-      done = true;
-      console.warn('[ads] no answer from the ad provider — continuing');
-      resolve(fallback);
-    }, ms);
-    p.then(
-      (v) => {
-        if (done) return;
-        done = true;
-        clearTimeout(t);
-        resolve(v);
-      },
-      () => {
-        if (done) return;
-        done = true;
-        clearTimeout(t);
-        resolve(fallback);
-      },
-    );
-  });
-}
-
 export interface AdHooks {
   /** mute + freeze the game while an ad is on screen */
   pause(): void;
@@ -185,7 +147,7 @@ export class Ads {
 
   constructor(parent: HTMLElement, private hooks: AdHooks) {
     const w = window as unknown as { adBreak?: AdBreakFn };
-    this.provider = platformProvider ?? (typeof w.adBreak === 'function' ? new H5GamesAdsProvider(w.adBreak) : new MockAdProvider(parent));
+    this.provider = typeof w.adBreak === 'function' ? new H5GamesAdsProvider(w.adBreak) : new MockAdProvider(parent);
     this.lastInterstitial = performance.now();
   }
 
@@ -200,7 +162,7 @@ export class Ads {
     this.stats.rewardedShown++;
     this.hooks.pause();
     try {
-      const ok = await capped(this.provider.rewarded(placement), 90000, false); // called synchronously: still inside the tap
+      const ok = await this.provider.rewarded(placement);
       if (ok) {
         this.stats.rewardedCompleted++;
         this.lastRewarded = performance.now();
@@ -235,7 +197,7 @@ export class Ads {
     this.showing = true;
     this.hooks.pause();
     try {
-      await capped(this.provider.interstitial(placement), 45000, undefined);
+      await this.provider.interstitial(placement);
       this.stats.interstitials++;
       this.runsSinceInterstitial = 0;
       this.lastInterstitial = performance.now();

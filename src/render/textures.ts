@@ -249,8 +249,11 @@ export function billboardTexture(variant: number) {
       ['#0a1f4a', '#1677ff', '#7af5ff'],
       ['#3a0a3f', '#ff3fae', '#ffd34f'],
       ['#06283d', '#00c2ff', '#ffffff'],
+      // v4.2.1: two more night palettes — 8 distinct boards (message × palette) instead of 4
+      ['#1d0626', '#b02bff', '#ff7ad8'],
+      ['#071a22', '#13b39a', '#d9fff4'],
     ];
-    const [a, b, accent] = palettes[variant % palettes.length];
+    const [a, b, accent] = palettes[(variant + Math.floor(variant / 4) * 3) % palettes.length];
     const grad = g.createLinearGradient(0, 0, 512, 256);
     grad.addColorStop(0, a);
     grad.addColorStop(1, b);
@@ -336,71 +339,6 @@ export function windowsTexture(seed = 1) {
     g.fillRect(0, 0, 3, 256);
     const t = toTex(c, { repeat: true });
     return t;
-  });
-}
-
-/** Road surface: dark asphalt panels, glowing lane dividers & edge lines. Tiles along V. */
-export function roadTexture() {
-  return memo('road', () => {
-    const W = 512;
-    const H = 512;
-    const [c, g] = canvas(W, H);
-    g.fillStyle = '#1b1f2e';
-    g.fillRect(0, 0, W, H);
-    // panel seams
-    g.strokeStyle = '#262c40';
-    g.lineWidth = 3;
-    for (let y = 0; y < H; y += 128) {
-      g.beginPath();
-      g.moveTo(0, y);
-      g.lineTo(W, y);
-      g.stroke();
-    }
-    // subtle noise
-    for (let i = 0; i < 2400; i++) {
-      g.fillStyle = Math.random() > 0.5 ? 'rgba(255,255,255,0.025)' : 'rgba(0,0,0,0.12)';
-      g.fillRect(Math.random() * W, Math.random() * H, 2, 2);
-    }
-    // lane dividers (dashed)
-    const laneW = W / 3;
-    g.fillStyle = '#9fe7ff';
-    for (let l = 1; l < 3; l++) {
-      for (let y = 0; y < H; y += 128) g.fillRect(l * laneW - 4, y + 20, 8, 70);
-    }
-    // edge lines (cyan inside, amber hazard)
-    g.fillStyle = '#4fc3ff';
-    g.fillRect(6, 0, 8, H);
-    g.fillRect(W - 14, 0, 8, H);
-    g.fillStyle = '#ffb02e';
-    for (let y = 0; y < H; y += 64) {
-      g.fillRect(0, y, 5, 32);
-      g.fillRect(W - 5, y, 5, 32);
-    }
-    const t = toTex(c, { repeat: true, aniso: 8 });
-    return t;
-  });
-}
-
-/** Chevron arrows painted on the road (boost pad look). */
-export function chevronTexture() {
-  return memo('chevron', () => {
-    const [c, g] = canvas(256, 256);
-    g.clearRect(0, 0, 256, 256);
-    g.strokeStyle = '#7ad7ff';
-    g.lineWidth = 26;
-    g.lineCap = 'round';
-    g.lineJoin = 'round';
-    g.shadowColor = '#4fc3ff';
-    g.shadowBlur = 20;
-    for (let i = 0; i < 2; i++) {
-      const y = 150 - i * 80;
-      g.beginPath();
-      g.moveTo(50, y + 50);
-      g.lineTo(128, y);
-      g.lineTo(206, y + 50);
-      g.stroke();
-    }
-    return toTex(c);
   });
 }
 
@@ -514,22 +452,6 @@ export function coinFaceTexture() {
   });
 }
 
-/** Vertical sky gradient for a theme (used on a big back-sphere). */
-export function skyTexture(top: string, mid: string, bottom: string, stars = false, key = '') {
-  return memo(`sky-${top}-${mid}-${bottom}-${stars}-${key}`, () => {
-    const [c, g] = canvas(16, 512);
-    const grad = g.createLinearGradient(0, 0, 0, 512);
-    grad.addColorStop(0, top);
-    grad.addColorStop(0.55, mid);
-    grad.addColorStop(1, bottom);
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 16, 512);
-    const t = toTex(c);
-    if (!stars) return t;
-    return t;
-  });
-}
-
 export function starfieldTexture() {
   return memo('stars', () => {
     const [c, g] = canvas(1024, 512);
@@ -600,11 +522,6 @@ export function crateTexture(glow: string) {
     }
     return toTex(c);
   });
-}
-
-export function disposeTextures() {
-  for (const t of cache.values()) t.dispose();
-  cache.clear();
 }
 
 /** v2 Bonus roads: tiling ground textures (sand · grass · fields · water). */

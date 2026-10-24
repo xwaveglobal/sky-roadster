@@ -2,9 +2,8 @@
  * v2 BONUS events (docs/GAME-DESIGN.md §5) — replace the old cups.
  *
  * v4.6 (owner): every hour (local time: 00:00, 01:00, …) a Bonus road opens for 30 minutes and can be
- * played up to 3 times. Each opening picks a random place (never the same as the hour before; every
- * player sees the same one), a 5-minute road with a FINISH line (congratulations + the coins earned),
- * coins only. Special items lie on the road and fire
+ * played up to 3 times. Each event is a brand-new everyday place (desert → forest → country → sea,
+ * rotating), a 5-minute road with a FINISH line (congratulations + the coins earned), coins only. Special items lie on the road and fire
  * by themselves when picked up. Pure logic — no DOM.
  */
 import type { BonusWorld } from '../gameplay/Spawner.ts';
@@ -14,7 +13,7 @@ export const BONUS = {
   openMinutes: 30,
   /** plays per event (v4.6) */
   maxPlays: 3,
-  /** non-stop minutes from START to FINISH (a short 5-minute road) */
+  /** non-stop minutes from START to FINISH (v2.2: a short 5-minute road, one play per event) */
   raceMinutes: 5,
   /** coins for reaching the finish line (× speed-level coin multiplier) */
   finishCoins: 300,
@@ -43,40 +42,16 @@ export interface BonusSlot {
   key: string;
 }
 
-/** shuffled order of all places for block `b` (seeded → the same for every player) */
-function shuffled(b: number): number[] {
-  const n = BONUS.themes.length;
-  const order = Array.from({ length: n }, (_, i) => i);
-  let x = (Math.imul(b, 0x9e3779b1) ^ 0x5bd1e995) >>> 0;
-  for (let i = n - 1; i > 0; i--) {
-    x ^= x << 13;
-    x ^= x >>> 17;
-    x ^= x << 5;
-    x >>>= 0;
-    const j = x % (i + 1);
-    [order[i], order[j]] = [order[j], order[i]];
-  }
-  return order;
-}
-/** random place per opening: every place once per block, never the same twice in a row */
-function themeIdx(idx: number): number {
-  const n = BONUS.themes.length;
-  const b = Math.floor(idx / n);
-  const order = shuffled(b);
-  if (n > 1 && order[0] === shuffled(b - 1)[n - 1]) [order[0], order[1]] = [order[1], order[0]];
-  return order[idx - b * n];
-}
-
-/** the slot that contains `now` (open for its first `openMinutes`) */
+/** the slot that contains `now` (open for its first BONUS.openMinutes) */
 function slotAt(now: number): BonusSlot {
   const d = new Date(now);
   const h = d.getHours();
   const startH = h - (h % BONUS.everyHours);
   const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), startH, 0, 0, 0).getTime();
-  // a random place per opening (seeded by the slot number, so it is the same for everyone)
+  // rotate the theme across days too (the same hour shows a different place tomorrow)
   const dayIdx = Math.floor(new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() / 86400000);
   const idx = dayIdx * (24 / BONUS.everyHours) + startH / BONUS.everyHours;
-  const theme = BONUS.themes[themeIdx(idx)];
+  const theme = BONUS.themes[((idx % BONUS.themes.length) + BONUS.themes.length) % BONUS.themes.length];
   return { theme, start, end: start + BONUS.openMinutes * 60000, key: `${start}` };
 }
 

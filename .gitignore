@@ -9,7 +9,3 @@ dist-esbuild
 .idea/
 server/data.json
 __pycache__/
-
-# HS pack output (zip to upload)
-*-tiktok.zip
-*-android.zip

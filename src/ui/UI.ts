@@ -20,8 +20,27 @@ import guide3 from '../assets/images/guide/guide-3.jpg';
 import { CHAINS, activeChains, pilotLevel } from '../meta/Career.ts';
 import type { SaveData } from '../core/Save.ts';
 import { SKINS, carVisibility } from '../render/Vehicle.ts';
-import { CAR_IMG, carImage, carRear, carShadow, logoImg } from './shared.ts';
-export { carImage, carRear, logoImg };
+import carZenith from '../assets/images/cars/zenith.webp';
+import carVolt from '../assets/images/cars/volt.webp';
+import carPhantom from '../assets/images/cars/phantom.webp';
+import carInferno from '../assets/images/cars/inferno.webp';
+import carNexus from '../assets/images/cars/nexus.webp';
+import carVega from '../assets/images/cars/vega.webp';
+import rearZenith from '../assets/images/cars/rear-zenith.webp';
+import rearVega from '../assets/images/cars/rear-vega.webp';
+import rearVolt from '../assets/images/cars/rear-volt.webp';
+import rearPhantom from '../assets/images/cars/rear-phantom.webp';
+import rearInferno from '../assets/images/cars/rear-inferno.webp';
+import rearNexus from '../assets/images/cars/rear-nexus.webp';
+// v4.5.1 (owner): every car picture in the panels is a render of the in-game 3D X1 in that car's colourway
+// (scripts/car/thumbs-x1.mjs + thumbs-pack.py); locked cars use the same render, blacked out by CSS
+const carShadow = carZenith;
+const CAR_IMG: Record<string, string> = { zenith: carZenith, vega: carVega, volt: carVolt, phantom: carPhantom, inferno: carInferno, nexus: carNexus };
+const CAR_REAR: Record<string, string> = { zenith: rearZenith, vega: rearVega, volt: rearVolt, phantom: rearPhantom, inferno: rearInferno, nexus: rearNexus };
+export const carImage = (id: string) => CAR_IMG[id] ?? carZenith;
+/** transparent in-race rear render (share card); cars without one use their thumbnail */
+export const carRear = (id: string) => CAR_REAR[id] ?? rearZenith;
+export const logoImg = logoUrl;
 const RARITY_COLOR: Record<string, string> = { Common: '#4fb3ff', Rare: '#a77bff', Epic: '#ffc24a', Legendary: '#ff4a3c', Mythic: '#d04dff', Ultimate: '#7dfff2' };
 import { LEVELS } from '../config.ts';
 import type { Run } from '../gameplay/Run.ts';
@@ -44,12 +63,12 @@ const THUMBS: Record<string, string> = {
   'mega-city': thMega,
 };
 
-import { UPGRADE_MAX, upgradeCost, type UpgradeKey } from './shared.ts';
-export { UPGRADE_MAX, upgradeCost, type UpgradeKey };
+export type UpgradeKey = 'engine' | 'shield' | 'magnet';
+export const UPGRADE_MAX = 5;
+export const upgradeCost = (lvl: number) => Math.round(150 * Math.pow(lvl + 1, 1.6) / 10) * 10;
 
 /** Show a small "demo rivals" note under sample leaderboards (set false once boards are online). */
-import { SAMPLE_BOARD_NOTE } from './shared.ts';
-export { SAMPLE_BOARD_NOTE };
+export const SAMPLE_BOARD_NOTE = true;
 
 export interface UIHandlers {
   /** Step 06.5: the class promotion celebration was acknowledged (Continue) */
@@ -89,6 +108,7 @@ export interface UIHandlers {
   toggleComfort(): void;
   toggleVibrate(): void;
   /** v4.6 setting: the race camera moves with the car (lanes, jumps, dives); off = fixed view */
+  toggleCamMotion(): void;
   skipTutorial(): void;
   // ---- ads
   continueAd(): void;
@@ -145,9 +165,6 @@ const BAG_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><defs><linearGradi
 
 /** tutorial (book + ?) and launch (megaphone) icons */
 const TUT_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5z"/><path d="M4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5"/><path d="M10.2 8.3a2 2 0 1 1 2.6 1.9c-.5.2-.8.6-.8 1.1v.6"/><path d="M12 14.4h.01"/></g></svg>`;
-import { MEGA_ICON } from './shared.ts';
-export { MEGA_ICON };
-
 /** what a finished / crashed run paid out (result screens) */
 export interface RunRewards {
   /** EXP of this run */
@@ -343,7 +360,7 @@ export class UI {
     </section>
 
     <section id="tracks" class="screen">
-      ${this.head('SELECT TRACK', `<button class="btn sm blue" data-a="help">${ICON.hand}<span>Training</span></button>`)}
+      ${this.head('SELECT TRACK')}
       <div class="track-list" data-k="tracklist"></div>
       <div class="boost-row" data-k="boosts" hidden></div>
       <button class="btn gold adbtn" data-a="adboost" data-k="adboost" hidden>${ICON.play}</button>
@@ -426,6 +443,7 @@ export class UI {
           <div class="stile"><span class="si">≋</span><span class="sl">Vibration</span><button class="switch" data-a="vibrate" role="switch" aria-label="Vibration"><i></i></button></div>
           <div class="stile"><span class="si">${ICON.info}</span><span class="sl">Hint arrows</span><button class="switch" data-a="assist" role="switch" aria-label="Danger arrows"><i></i></button></div>
           <div class="stile"><span class="si">◐</span><span class="sl">Eye comfort</span><button class="switch" data-a="comfort" role="switch" aria-label="Comfort visuals"><i></i></button></div>
+          <div class="stile"><span class="si">🎥</span><span class="sl">Camera motion</span><button class="switch" data-a="cammotion" role="switch" aria-label="Camera moves with the car"><i></i></button></div>
           <div class="stile wide"><span class="si">${ICON.gear}</span><span class="sl">Graphics</span><div class="seg" data-k="qseg"><button data-a="quality" data-v="low">LO</button><button data-a="quality" data-v="medium">MED</button><button data-a="quality" data-v="high">HI</button></div></div>
         </div>
         <button class="srow lang acct" data-a="account"><span class="si">☁️</span><span class="sl">Account</span><b data-k="acctline">Guest</b>${ICON.chevR}</button>
@@ -809,6 +827,7 @@ export class UI {
         case 'assist': return this.h.toggleAssist();
         case 'comfort': return this.h.toggleComfort();
         case 'vibrate': return this.h.toggleVibrate();
+        case 'cammotion': return this.h.toggleCamMotion();
         case 'tutskip': return this.h.skipTutorial();
         case 'track': return this.h.pickTrack(el.dataset.id!);
         case 'spick': {
@@ -1084,6 +1103,7 @@ export class UI {
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="sound"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.sound)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="music"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.music)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="comfort"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.comfort !== false)));
+    this.root.querySelectorAll<HTMLElement>('.switch[data-a="cammotion"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.camMotion === true)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="vibrate"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.vibrate !== false)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="assist"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.assist !== false)));
     const q = this.liveQuality ?? s.settings.quality;
@@ -1767,7 +1787,7 @@ export class UI {
         <span>${ICON.clock}<b>${o.minutes} min</b> to the finish · <b>${o.maxPlays} plays</b></span>
         <span>${ICON.coin}<b>Coins only</b> · finish +${fmt(o.finish)}</span>
         <span>${ICON.rocket}<b>Rare specials</b> fire by themselves</span>
-        <span>${ICON.gift}<b>Every ${o.everyHours === 1 ? 'hour' : `${o.everyHours} h`}</b> · open ${o.openMinutes} min · random place</span>
+        <span>${ICON.gift}<b>Every ${o.everyHours === 1 ? 'hour' : `${o.everyHours} h`}</b> · open ${o.openMinutes} min · new place</span>
       </div>
       ${o.live && !o.played ? `<button class="btn big gold" data-a="bonusgo">${ICON.play} Race · ${o.playsLeft} / ${o.maxPlays} left</button>` : o.live ? `<button class="btn" disabled>${ICON.check} ${o.maxPlays} plays used · next ${o.opensAt}</button>` : `<button class="btn" disabled>${ICON.lock} Opens ${o.opensAt}</button>`}
       ${o.next ? `<div class="label bn-next">Next: ${o.next}</div>` : ''}`;
@@ -2323,7 +2343,7 @@ export class UI {
           `<div class="pzsteps">
             ${step(1, 'Open your pilot profile', st[0], `<div class="pzrow"><span class="pztile plus">${ICON.plus}</span><span class="pztile chat">${ICON.user}<em>99+</em></span><span class="pztile ava on">${avatarSvg(av)}${tapMarks()}</span></div>`, 'profile')}
             ${step(2, 'Set your pilot name', st[1], `<div class="pzbanner"><img src="${logoUrl}" alt="" /><span class="pzname">${name}</span><span class="pzmenu">≡</span></div>`, 'profile')}
-            ${step(3, 'Pick your racing helmet', st[2], `<div class="pzcard"><img src="${carImage('zenith')}" alt="" /><span class="pzhelm">${avatarSvg(av)}</span>${hand}${tapMarks('r')}</div>`, 'profile')}
+            ${step(3, 'Pick your racing helmet', st[2], `<div class="pzcard"><img src="${carZenith}" alt="" /><span class="pzhelm">${avatarSvg(av)}</span>${hand}${tapMarks('r')}</div>`, 'profile')}
             ${step(4, 'Claim your rewards', done, coinBanner(d.entryReward))}
           </div>` +
           (done
@@ -2388,29 +2408,15 @@ export class UI {
   }
 
   perkBadges(o: Record<'entry' | 'launch' | 'share', 'todo' | 'ready' | 'done'>) {
-    // v3.0.11: a reward button shows only while its reward can still be earned (Entry / Launch: not
-    // claimed; Share: not yet rewarded today — it comes back the next day). The rail keeps the
-    // visible ones centred and glides them to their new place (FLIP, 200 ms).
-    const rail = this.root.querySelector<HTMLElement>('.rail.right');
-    const btns = rail ? Array.from(rail.querySelectorAll<HTMLElement>('.rbtn')) : [];
-    const before = new Map(btns.map((b) => [b, b.getBoundingClientRect().top]));
     for (const [k, st] of Object.entries(o)) {
       const b = this.root.querySelector<HTMLElement>(`[data-k="pk-${k}"]`);
       if (!b) continue;
-      b.hidden = st === 'done';
+      // Entry stays after it is claimed (its popup then links to Daily / Shop / Garage / Tutorial / Race / Cups);
+      // Launch disappears once claimed; Share is daily
+      b.hidden = st === 'done' && k === 'launch';
       b.classList.toggle('done', st === 'done');
       const e = b.querySelector<HTMLElement>('.badge');
       if (e) e.hidden = st !== 'ready' || k === 'share'; // no '!' on Share
-    }
-    if (rail) {
-      rail.hidden = btns.every((b) => b.hidden);
-      for (const b of btns) {
-        const t0 = before.get(b);
-        if (b.hidden || t0 === undefined || !t0) continue;
-        const dy = t0 - b.getBoundingClientRect().top;
-        if (Math.abs(dy) < 1) continue;
-        b.animate?.([{ transform: `translateY(${dy}px)` }, { transform: 'none' }], { duration: 200, easing: 'cubic-bezier(.2,.8,.2,1)' });
-      }
     }
   }
 

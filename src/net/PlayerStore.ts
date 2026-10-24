@@ -9,7 +9,6 @@
  *   players  — one row per pilot; `is_bot` marks generated rivals
  *   scores   — best score per (player, board); board = 'all' | 'week:YYYY-Www' | 'cup:<session>-<class>'
  */
-import { kv } from '../core/kv.ts';
 import type { RankClass } from '../meta/Rank.ts';
 
 export interface PlayerRecord {
@@ -63,7 +62,7 @@ export class LocalPlayerStore implements PlayerStore {
   constructor() {
     this.t = { v: 1, players: {}, scores: {} };
     try {
-      const raw = kv.get(DB_KEY);
+      const raw = localStorage.getItem(DB_KEY);
       if (raw) this.t = { ...this.t, ...(JSON.parse(raw) as Tables) };
     } catch {
       /* private mode: in-memory only */
@@ -71,7 +70,7 @@ export class LocalPlayerStore implements PlayerStore {
   }
   private save() {
     try {
-      kv.set(DB_KEY, JSON.stringify(this.t));
+      localStorage.setItem(DB_KEY, JSON.stringify(this.t));
     } catch {
       /* quota / private mode */
     }
