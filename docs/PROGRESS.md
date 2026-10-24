@@ -1,5 +1,11 @@
 # Progress log
 
+## 2026-10-24 — main = v3.2.0
+
+`main` now points at the former `new-main` (v3.2.0). The previous `main` (v3.0.11) is kept in `main-v3.0.11-backup`.
+
+---
+
 ## 2026-10-24 — new-main v3.2.0
 
 **Done**: merged the newest `feature/sky-roadster-v4.6-big-update` (training, Bonus 3 plays, post-race rank board, cleanup / perf, promotion rewards, rarity by class) into `new-main`, car / road / camera files kept as `main` (pre-3D car images restored after the v4.6 cleanup deleted them). Native: `runRank` overlay (climb animation + glow), classUp reward, Bonus plays left. `CAR_VIEW` (config) = bigger car + closer camera. Removed 3D-only QA scripts and the native paywall popup.
