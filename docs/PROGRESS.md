@@ -1,5 +1,11 @@
 # Progress log
 
+## 2026-10-24 — main = v4.6.1 (3D upgrade)
+
+`main` now has the content of `feature/sky-roadster-v4.6-big-update` (committed as a merge on top of the old main, so `git pull --ff-only` on the owner's PC keeps working). The previous `main` (v3.2.0, native v3 + v4.6 gameplay) is branch `main-v1`.
+
+---
+
 Newest entry on top. Every AI session adds a short entry: what was done, what is unfinished, what's next.
 
 ---

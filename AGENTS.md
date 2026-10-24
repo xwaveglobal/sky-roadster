@@ -64,8 +64,9 @@ builds/              prebuilt single-file HTML snapshots (playable by opening th
 ## Workflow
 
 - **Versions live side by side (one branch each):**
-  - `v4.0.1` = **v4** — the 3D upgrade (better 3D graphics). Started at v4.0.1 from the H5 web game v2.3.0 (DOM UI, accounts / cloud save), because the H5 code is the easiest base for 3D work. Work and push here; never merge `main` (v3 native) into it.
-  - `main` = **v3** — the native TikTok mini game (+ the web build of the same code). Every push to `main` goes live on the owner's PC.
+  - `v4.0.1` = **v4** — the 3D upgrade (better 3D graphics). Started at v4.0.1 from the H5 web game v2.3.0 (DOM UI, accounts / cloud save), because the H5 code is the easiest base for 3D work. (history; the current 3D work is on `main`).
+  - `main` = **v4.6** (since 2026-10-24) — the 3D upgrade (content of `feature/sky-roadster-v4.6-big-update`, v4.6.1). Every push to `main` goes live on the owner's PC.
+  - `main-v1` = the previous `main` (v3.2.0: native TikTok v3 game + the v4.6 gameplay / UI, car / road / camera of v3). `main-v3.0.11-backup` = v3.0.11. Native fixes for v3 go to `main-v1`.
   - `v2` = the v2 web game frozen at v2.3.0. Fixes: check out `v2`, commit, push `v2`.
   - `v1` = the old game, frozen at v1.19.1. It stays fully playable and can still get improvements: check out `v1`, commit there, push `v1`. Never merge `v1` into another branch (cherry-pick a fix if both need it). The v1 single-file build is `builds/sky-roadster-v1.18.html` on the `v1` branch.
 - Branch `main` = always playable. Big or risky work → a branch (`feat/…`, `fix/…`), merge when it works.
