@@ -34,7 +34,7 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
   - `scripts/qa/layout.mjs` (web layout sweep at 375 × 640; garage / profile strips scroll on purpose);
   - `scripts/qa/native.mjs` updated (no "no thanks" button any more).
 
-**Checks**: typecheck OK; `npm test` all green; hs-check 0 fail / 0 warn; native QA — see the README.
+**Checks**: typecheck OK; `npm test` all green; hs-check 0 fail / 0 warn; native QA 26 / 26 (TikTok) + 26 / 26 (Android).
 
 **Open / interpretations**:
 - "Gold Rush" was taken to mean the Bonus roads (they get the same CRASHED! panel).

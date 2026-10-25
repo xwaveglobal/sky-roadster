@@ -263,7 +263,7 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
     - 4 · one of the 8 specials on its own set piece, about 15 s (e.g. Tunnel Rider drives through a real tunnel).
 - **Checks:**
   - `npm run check:tiktok`: 0 fail, 0 warn.
-  - `scripts/qa/native.mjs`: 25 / 25 in TikTok mode and 25 / 25 in Android mode (HS fake-phone preview, real taps). Screens are in `docs/native-v5/`.
+  - `scripts/qa/native.mjs`: 26 / 26 in TikTok mode and 26 / 26 in Android mode (HS fake-phone preview, real taps; rerun 2026-10-25). Screens are in `docs/native-v5/`.
   - Package size: 3.6 MB of the 4 MB limit.
   - Not tested on a real phone here.
 

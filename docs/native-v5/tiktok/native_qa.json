@@ -165,6 +165,14 @@
   },
   {
    "ok": true,
+   "msg": "after the race, Home shows the car whole (broken parts put back)",
+   "data": {
+    "atGameOver": true,
+    "onHome": false
+   }
+  },
+  {
+   "ok": true,
    "msg": "first-time Class C celebration",
    "data": [
     "start",
