@@ -1,6 +1,7 @@
 // Fallback build without Vite (used in CI / sandboxes with esbuild only).
 //   node scripts/build-esbuild.mjs            -> dist-esbuild/index.html (+ JS/CSS files)
 //   node scripts/build-esbuild.mjs --single   -> dist-esbuild/xwave-flying-run.html (one self-contained file)
+//   add --demo for the autoplay video build (Settings → Autoplay always shown)
 import { build } from 'esbuild';
 import { readFileSync, writeFileSync, mkdirSync, rmSync, cpSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -9,6 +10,8 @@ import { fileURLToPath } from 'node:url';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'dist-esbuild');
 const single = process.argv.includes('--single');
+// --demo: the video-recording build — Settings → Autoplay is always there (no ?demo needed)
+const demo = process.argv.includes('--demo');
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
 
@@ -34,7 +37,7 @@ const res = await build({
       ]
     : [],
   legalComments: 'none',
-  define: { 'process.env.NODE_ENV': '"production"' },
+  define: { 'process.env.NODE_ENV': '"production"', __DEMO_BUILD__: demo ? 'true' : 'false' },
   logLevel: 'warning',
 });
 

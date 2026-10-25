@@ -261,6 +261,7 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
     - 2 · Pro pilot (HARD, rank AA, the tightest rows);
     - 3 · Road to AAA (a 10-minute fast-forward, then the AAA promotion);
     - 4 · one of the 8 specials on its own set piece, about 15 s (e.g. Tunnel Rider drives through a real tunnel).
+    - Video-recording build: `node scripts/build-esbuild.mjs --single --demo` — one HTML file with Settings → Autoplay always shown (works from `file://`).
 - **Checks:**
   - `npm run check:tiktok`: 0 fail, 0 warn.
   - `scripts/qa/native.mjs`: 26 / 26 in TikTok mode and 26 / 26 in Android mode (HS fake-phone preview, real taps; rerun 2026-10-25). Screens are in `docs/native-v5/`.

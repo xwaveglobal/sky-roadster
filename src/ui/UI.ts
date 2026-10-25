@@ -52,7 +52,8 @@ import { UPGRADE_MAX, upgradeCost, SAMPLE_BOARD_NOTE, type UpgradeKey } from './
 export { UPGRADE_MAX, upgradeCost, SAMPLE_BOARD_NOTE, type UpgradeKey };
 
 /** v5: the hidden Autoplay row in Settings (only with ?demo in the URL) */
-const DEMO_MENU_ON = typeof location !== 'undefined' && /[?&]demo\b/.test(location.search);
+/** v5 Autoplay menu: `?demo` on the web build, always in the video-recording build (build-esbuild --demo) */
+const DEMO_MENU_ON = (typeof __DEMO_BUILD__ !== 'undefined' && __DEMO_BUILD__) || (typeof location !== 'undefined' && /[?&]demo\b/.test(location.search));
 
 export interface UIHandlers {
   /** Step 06.5: the class promotion celebration was acknowledged (Continue) */

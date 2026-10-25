@@ -104,7 +104,8 @@ const DEMO = (() => {
   return { kind: m[1] as DemoKind, sp: ((DEMO_SPECIALS as readonly string[]).includes(sp) ? sp : 'super') as (typeof DEMO_SPECIALS)[number] };
 })();
 /** Settings shows the Autoplay row (hidden menu) */
-export const DEMO_MENU = typeof location !== 'undefined' && /[?&]demo\b/.test(location.search);
+/** v5 Autoplay menu: `?demo` on the web build, always in the video-recording build (build-esbuild --demo) */
+export const DEMO_MENU = (typeof __DEMO_BUILD__ !== 'undefined' && __DEMO_BUILD__) || (typeof location !== 'undefined' && /[?&]demo\b/.test(location.search));
 /** coins for one Roadster Jump bought on the spot (training / blockade) */
 /** welcome-back gift after this many hours away */
 const WELCOME_AFTER_H = 12;
