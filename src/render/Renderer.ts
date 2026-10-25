@@ -31,7 +31,7 @@ const SpeedBlurShader = {
 /** objects on this layer skip post-processing and are drawn last, pixel-exact (the car render) */
 export const OVERLAY_LAYER = 1;
 
-import { GRAPHICS, type GraphicsQuality } from '../config.ts';
+import { GRAPHICS, RENDER, type GraphicsQuality } from '../config.ts';
 /** v4.2: LOW / MEDIUM / HIGH presets (config GRAPHICS) */
 export type Quality = GraphicsQuality;
 
@@ -115,7 +115,7 @@ export class Renderer {
     if (!r) throw err ?? new Error('WebGL unavailable');
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = THREE.ACESFilmicToneMapping;
-    r.toneMappingExposure = 1.05;
+    r.toneMappingExposure = RENDER.exposure; // v5 (owner): a little brighter
     if (this.canvas) return r; // v3 native: the screen canvas is sized by the runtime adapter
     r.domElement.style.display = 'block';
     r.domElement.style.width = '100%';

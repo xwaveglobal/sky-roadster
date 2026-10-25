@@ -310,6 +310,8 @@ export const CLOUD = {
  * `?car=sprite` / `?car=mesh` in the page URL override it for comparison.
  */
 export const RENDER = {
+  /** overall screen brightness (tone-mapping exposure) — v5 (owner 2026-10-25): 1.05 → 1.2, a little brighter */
+  exposure: 1.2,
   car: (typeof location !== 'undefined' && /[?&]car=sprite/.test(location.search) ? 'sprite' : 'mesh') as 'mesh' | 'sprite',
   /** model (real-size metres) → game size. 0.76 ≈ 1.66 m wide: close to the 1.4 m hitbox, and the rear
    *  reads about the same size on screen as the old rear image did from the unchanged chase camera */
