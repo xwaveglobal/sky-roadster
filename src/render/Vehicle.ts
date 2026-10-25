@@ -1502,7 +1502,7 @@ export class Vehicle {
       const e = sc.e;
       const side = p.x >= 0 ? 1 : -1;
       if (sc.kind === 'wall') {
-        // v5 (owner): the car really drives ON the side wall — wheels against it, body tipped ~80°
+        // v5 (owner): the car drives ON the side wall — standing 90° on its side, the wheels rolling on the wall
         // (the roll pivots on the wheels' contact line, so the tyres stay on the wall surface)
         const W = SHOWCASE.wall;
         this.root.position.x = lerp(p.x, side * W.x, e);

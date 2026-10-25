@@ -546,10 +546,10 @@ export const ROAD = {
  * v5 (owner 2026-10-25) showcase poses of the Bonus specials (visual only — gameplay is invulnerable then).
  *  tunnel: the car rolls onto the tunnel vault (BonusTunnels: radius 9.5, centre 0.4 below the road) and
  *          drives on it, wheels on the roof. r = radius of the wheel contact (below the crown light strip).
- *  wall:   the car drives on the side wall: wheels at x, roll in rad (π/2 = fully sideways), contact height y;
+ *  wall:   the car drives on the side wall, standing 90° on its side: wheels at x, roll in rad, contact height y;
  *          a glowing wall panel h tall / len long is shown on that side.
  */
 export const SHOWCASE = {
   tunnel: { r: 8.75, cy: -0.4 },
-  wall: { x: 4.4, y: 1.05, roll: 1.42, h: 3.4, len: 60 },
+  wall: { x: 4.4, y: 1.12, roll: Math.PI / 2, h: 3.4, len: 60 },
 };
