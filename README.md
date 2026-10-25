@@ -262,6 +262,7 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
     - 3 · Road to AAA (a 10-minute fast-forward, then the AAA promotion);
     - 4 · one of the 8 specials on its own set piece, about 15 s (e.g. Tunnel Rider drives through a real tunnel).
     - Video-recording build: `node scripts/build-esbuild.mjs --single --demo` — one HTML file with Settings → Autoplay always shown (works from `file://`).
+    - TikTok test build of the same: `node scripts/build-tiktok.mjs --demo` → `npm run pack:tiktok`. The native Settings → Autoplay starts the scene in place (no reload), and Home ends it; nothing is saved for the rest of that session. During a scene the graphics never step down by themselves. **Never the release zip**: rebuild without `--demo` before packing a release.
 - **Checks:**
   - `npm run check:tiktok`: 0 fail, 0 warn.
   - `scripts/qa/native.mjs`: 26 / 26 in TikTok mode and 26 / 26 in Android mode (HS fake-phone preview, real taps; rerun 2026-10-25). Screens are in `docs/native-v5/`.

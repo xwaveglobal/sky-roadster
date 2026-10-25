@@ -339,6 +339,31 @@ try {
     check(sk, 'training: Skip always on screen', sk);
     if (sk) await tap('tutskip');
   }
+  // ------------------------------------------------------------------ autoplay (only in the --demo video build)
+  if (want('demo') && (only.includes('demo') || process.argv.includes('--demo'))) {
+    console.log('G. autoplay (video build)');
+    await ev(() => {
+      const G = window.__xwave;
+      for (const id of [...G.ui.shown]) if (!['start', 'hud'].includes(id)) G.ui.hideOverlay(id);
+      G.goHome();
+      G.ui.h.settings();
+    });
+    await until(() => window.__xwave.ui.shown.has('settings'));
+    const hasRow = await tap('s-demo');
+    check(hasRow, 'Settings → Autoplay row (video build)');
+    await until(() => window.__xwave.ui.shown.has('demopick'));
+    await shot('17_autoplay_picker');
+    await tap('dm-sp-tunnel');
+    for (let i = 0; i < 60 && (await state()) !== 'run'; i++) await ev(() => window.__xwave.advance(0.25));
+    for (let i = 0; i < 24; i++) await ev(() => window.__xwave.advance(0.25));
+    const d = await ev(() => ({ s: window.__xwave.state, kind: window.__xwave.demo?.kind, sp: window.__xwave.demo?.sp, phase: window.__xwave.demo?.phase }));
+    check(d.s === 'run' && d.kind === 'special' && d.sp === 'tunnel' && d.phase >= 2, 'Tunnel Rider scene starts in place (no page reload in the mini game)', d);
+    for (let i = 0; i < 40; i++) await ev(() => window.__xwave.advance(0.25));
+    await shot('18_autoplay_tunnel');
+    await ev(() => window.__xwave.goHome());
+    const after = await ev(() => ({ demo: window.__xwave.demo, s: window.__xwave.state }));
+    check(after.demo === null && after.s === 'menu', 'Home ends the scene', after);
+  }
   R.errors = R.errors.filter((e) => !/ipapi|net::ERR|Failed to load resource|favicon/i.test(e));
   check(R.errors.length === 0, 'no page / console errors', R.errors.slice(0, 8));
 } catch (e) {

@@ -1,4 +1,5 @@
 import { COUNTRIES, countryName, flagOf } from '../meta/Country.ts';
+import { DEMO_MENU } from '../core/demoFlag.ts';
 import './ui.css';
 import { ICON } from './icons.ts';
 import { copyText } from './ShareCard.ts';
@@ -52,8 +53,6 @@ import { UPGRADE_MAX, upgradeCost, SAMPLE_BOARD_NOTE, type UpgradeKey } from './
 export { UPGRADE_MAX, upgradeCost, SAMPLE_BOARD_NOTE, type UpgradeKey };
 
 /** v5: the hidden Autoplay row in Settings (only with ?demo in the URL) */
-/** v5 Autoplay menu: `?demo` on the web build, always in the video-recording build (build-esbuild --demo) */
-const DEMO_MENU_ON = (typeof __DEMO_BUILD__ !== 'undefined' && __DEMO_BUILD__) || (typeof location !== 'undefined' && /[?&]demo\b/.test(location.search));
 
 export interface UIHandlers {
   /** Step 06.5: the class promotion celebration was acknowledged (Continue) */
@@ -435,7 +434,7 @@ export class UI {
         </div>
         <button class="srow lang acct" data-a="account"><span class="si">☁️</span><span class="sl">Account</span><b data-k="acctline">Guest</b>${ICON.chevR}</button>
         <button class="srow lang" data-a="lang"><span class="si">🌐</span><span class="sl">Language</span><b data-k="langname">English</b>${ICON.chevR}</button>
-        ${DEMO_MENU_ON ? `<button class="srow lang" data-a="demomenu"><span class="si">🎬</span><span class="sl">Autoplay (video)</span><b>4 scenes</b>${ICON.chevR}</button>` : ''}
+        ${DEMO_MENU ? `<button class="srow lang" data-a="demomenu"><span class="si">🎬</span><span class="sl">Autoplay (video)</span><b>4 scenes</b>${ICON.chevR}</button>` : ''}
         <div class="sbtns compact">
           <button class="btn sm ghost" data-a="profile">${ICON.user} Profile</button>
           <button class="btn sm ghost" data-a="help">${ICON.info} How to play</button>

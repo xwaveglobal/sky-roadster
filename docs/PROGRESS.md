@@ -31,6 +31,7 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
   - `Autopilot`-driven scenes;
   - the Tunnel Rider stage builds a real tunnel (`BonusTunnels.update` now runs outside track mode too).
   - The video-recording build is `node scripts/build-esbuild.mjs --single --demo` (`__DEMO_BUILD__`): one HTML file with the Autoplay menu always on. It was sent to the owner as `sky-roadster-v5.0.0-autoplay.zip`.
+  - The native video build is `node scripts/build-tiktok.mjs --demo` (the canvas Settings → Autoplay row and the `demopick` overlay; scenes start in place). It was sent as `sky-roadster-v5.0.0-autoplay-tiktok.zip` for the owner's own test upload. The committed `tiktok/` is the release build (no `--demo`). `scripts/qa/native.mjs <out> --demo` (or `--only=demo`) checks it.
 - QA:
   - `scripts/qa/layout.mjs` (web layout sweep at 375 × 640; garage / profile strips scroll on purpose);
   - `scripts/qa/native.mjs` updated (no "no thanks" button any more).

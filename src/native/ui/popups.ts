@@ -18,6 +18,7 @@ import { calendarGift, coinPile, giftBox, megaphone, shareNodes, starBig, wifiRo
 import type { RunRewards } from '../../ui/UI.ts';
 import { hs } from '../hs.ts';
 import { askText } from '../text.ts';
+import { DEMO_MENU } from '../../core/demoFlag.ts';
 
 type Close = 'modal' | 'ov' | 'none';
 interface ModalOpts {
@@ -94,6 +95,7 @@ const OV: Record<string, (ui: UI, g: Gfx) => void> = {
   account: accountOv,
   cloudpick: cloudpickOv,
   popup: popupOv,
+  demopick: demopickOv,
 };
 export function drawOverlay(ui: UI, g: Gfx, id: string) {
   OV[id]?.(ui, g);
@@ -666,6 +668,8 @@ function settingsOv(ui: UI, g: Gfx) {
       y += 52;
     };
     row('s-lang', '🌐', 'Language', LANGS.find((l) => l.code === ui.lang)?.name ?? 'English', () => ui.langPicker());
+    // v5 Autoplay (video recording build only)
+    if (DEMO_MENU) row('s-demo', '🎬', 'Autoplay (video)', '4 scenes', () => ui.showOverlay('demopick'));
     const bw = (w - 8) / 2;
     button(g, 's-prof', x, y, bw, 40, `${ICON.user} Profile`, () => ui.h.profile(), { style: 'ghost', size: 12 });
     button(g, 's-help', x + bw + 8, y, bw, 40, `${ICON.info} How to play`, () => ui.h.help(), { style: 'ghost', size: 12 });
@@ -683,6 +687,36 @@ function settingsOv(ui: UI, g: Gfx) {
       y += 40;
     }
     return y + 4;
+  });
+}
+
+/** v5 Autoplay picker (video-recording build): 3 scenes + one scene per special item */
+function demopickOv(ui: UI, g: Gfx) {
+  modal(ui, g, 'demopick', { title: 'AUTOPLAY' }, (x, y, w) => {
+    y += g.para('A scene plays by itself for your video (about 10 s). Nothing is saved while it plays.', x, y, w, { size: 11.5, font: 'b', color: C.muted });
+    y += 8;
+    const scenes: [string, string, string][] = [
+      ['dumb', '1 · Hopeless pilot', 'a few dodges, then crash after crash'],
+      ['genius', '2 · Pro pilot', 'HARD · rank AA · the tightest rows'],
+      ['aaa', '3 · Road to AAA', '10 min fast-forward, then rank AAA'],
+    ];
+    for (const [k, t, sub] of scenes) {
+      const key = `dm-${k}`;
+      g.rr(x, y, w, 54, 14, g.isPressed(key) ? 'rgba(79,195,255,.25)' : 'rgba(37,51,95,.95)', 'rgba(130,175,255,.25)');
+      g.text(t, x + 14, y + 20, { size: 16, italic: true, maxW: w - 28 });
+      g.text(sub, x + 14, y + 39, { size: 10.5, font: 'b', color: C.muted, maxW: w - 28 });
+      g.hit(x, y, w, 54, key, () => ui.h.demo?.(k));
+      y += 62;
+    }
+    g.text('4 · SPECIAL ITEMS (15 S EACH)', x + w / 2, y + 8, { size: 11, align: 'center', font: 'b', color: C.muted });
+    y += 22;
+    const sps: [string, string][] = [['super', 'Roadster Jump'], ['hyper', 'HYPER Jump'], ['escape', 'SOS Escape'], ['tunnel', 'Tunnel Rider'], ['ghost', 'Phase Ghost'], ['wall', 'Wall Run'], ['rail', 'Sky Rail'], ['dash', 'Air Dash']];
+    const bw = (w - 8) / 2;
+    sps.forEach(([k, n], i) => {
+      button(g, `dm-sp-${k}`, x + (i % 2) * (bw + 8), y + Math.floor(i / 2) * 44, bw, 36, n, () => ui.h.demo?.('special', k), { style: 'purple', size: 12 });
+    });
+    y += Math.ceil(sps.length / 2) * 44;
+    return y;
   });
 }
 

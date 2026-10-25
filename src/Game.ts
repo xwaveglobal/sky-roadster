@@ -59,6 +59,7 @@ import { BonusTunnels } from './render/BonusTunnels.ts';
 import { drawShareCard, shareImage, copyText } from './ui/ShareCard.ts';
 import { ITEM_PRICE, UNLOCK_BOOSTS, V1_ITEM_PRICE, SPECIALS, type SpecialKey } from './meta/Daily.ts';
 import { dayKey } from './core/Save.ts';
+import { IS_NATIVE } from './core/demoFlag.ts';
 import { restartSpecial } from './meta/Restart.ts';
 import { platform } from './platform.ts';
 
@@ -96,16 +97,15 @@ const VERSION = 'v5.0.0';
  */
 export type DemoKind = 'dumb' | 'genius' | 'aaa' | 'special';
 export const DEMO_SPECIALS = ['super', 'hyper', 'escape', 'ghost', 'wall', 'rail', 'tunnel', 'dash'] as const;
-const DEMO = (() => {
-  if (typeof location === 'undefined') return null;
+/** the autoplay scene of this session (web: from the address; native: set by Settings → Autoplay) */
+let DEMO = (() => {
+  if (typeof location === 'undefined' || typeof location.search !== 'string') return null;
   const m = /[?&]demo=(dumb|genius|aaa|special)\b/.exec(location.search);
   if (!m) return null;
   const sp = /[?&]sp=(\w+)/.exec(location.search)?.[1] ?? 'super';
   return { kind: m[1] as DemoKind, sp: ((DEMO_SPECIALS as readonly string[]).includes(sp) ? sp : 'super') as (typeof DEMO_SPECIALS)[number] };
 })();
-/** Settings shows the Autoplay row (hidden menu) */
-/** v5 Autoplay menu: `?demo` on the web build, always in the video-recording build (build-esbuild --demo) */
-export const DEMO_MENU = (typeof __DEMO_BUILD__ !== 'undefined' && __DEMO_BUILD__) || (typeof location !== 'undefined' && /[?&]demo\b/.test(location.search));
+export { DEMO_MENU } from './core/demoFlag.ts';
 /** coins for one Roadster Jump bought on the spot (training / blockade) */
 /** welcome-back gift after this many hours away */
 const WELCOME_AFTER_H = 12;
@@ -724,6 +724,9 @@ export class Game {
 
   goHome() {
     this.audio.play('click');
+    // an autoplay scene ends on Home (the session stays a sandbox: nothing is saved)
+    this.demo = null;
+    this.demoSafe = false;
     this.tutorialMode = false;
     this.tutPrompting = false;
     this.timeScale = this.timeScaleTarget = 1;
@@ -3755,7 +3758,8 @@ export class Game {
     const avg = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
     this.fps = 1 / Math.max(1e-4, avg);
     this.qualityChecked += rawDt;
-    if (this.state === 'run' && this.qualityChecked > 4 && this.renderer.quality !== 'low' && this.fps < 42 && !DEBUG && !/[?&]noauto/.test(location.search)) {
+    if (this.state === 'run' && this.qualityChecked > 4 && this.renderer.quality !== 'low' && this.fps < 42 && !DEBUG && !this.demo && !/[?&]noauto/.test(location.search)) {
+      // (an autoplay scene keeps the graphics the recorder picked — the video must not drop to LOW)
       this.qualityChecked = 0;
       this.frameTimes.length = 0;
       // graceful scaling: resolution 2 → 1.75 → 1.5, then bloom off, only then LOW (session only)
@@ -3964,6 +3968,14 @@ export class Game {
 
   /** v5 Settings → Autoplay: open a scene (reloads the page into its sandbox session) */
   openDemo(kind: DemoKind, sp?: string) {
+    if (IS_NATIVE || typeof location === 'undefined' || typeof location.search !== 'string') {
+      // native mini game: no page reload — start the scene in place (from now on nothing is saved this session)
+      const s = sp && (DEMO_SPECIALS as readonly string[]).includes(sp) ? (sp as (typeof DEMO_SPECIALS)[number]) : 'super';
+      DEMO = { kind, sp: s };
+      for (const id of ['demopick', 'settings']) this.ui.hideOverlay(id);
+      this.demoStart();
+      return;
+    }
     const q = new URLSearchParams(location.search);
     q.set('demo', kind);
     if (sp) q.set('sp', sp);

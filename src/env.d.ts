@@ -18,3 +18,5 @@ declare module '*.glb' {
 
 /** set by scripts/build-esbuild.mjs (--demo = the autoplay video build); undefined in other builds */
 declare const __DEMO_BUILD__: boolean | undefined;
+/** set by scripts/build-tiktok.mjs (the native TikTok build); undefined in the web builds */
+declare const __NATIVE__: boolean | undefined;

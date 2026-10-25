@@ -2,6 +2,7 @@
 //
 //   npm run build:tiktok            (Node + esbuild, which comes with Vite)
 //   bun scripts/build-tiktok.mjs    (same output with Bun, no node_modules needed)
+//   add --demo for the autoplay video build (test uploads only; never the release zip)
 //
 // The game folder must hold only what is uploaded to TikTok: game.js, game.json, project.config.json,
 // hs-game.js, hs-sdk.min.js and assets/. The HS kit itself stays outside (hs-sdk/).
@@ -15,6 +16,9 @@ const assetsOut = join(out, 'assets');
 const entry = join(root, 'src/native/main.ts');
 const nativeImg = join(root, 'src/native/img');
 const watch = process.argv.includes('--watch');
+// --demo: the autoplay video-recording build (Settings → Autoplay always shown) — for test uploads only,
+// rebuild without it before packing the release zip
+const demo = process.argv.includes('--demo');
 
 rmSync(assetsOut, { recursive: true, force: true });
 mkdirSync(assetsOut, { recursive: true });
@@ -56,7 +60,7 @@ const common = {
   entryPoints: [entry],
   bundle: true,
   target: 'es2018',
-  define: { 'process.env.NODE_ENV': '"production"', __NATIVE__: 'true' },
+  define: { 'process.env.NODE_ENV': '"production"', __NATIVE__: 'true', __DEMO_BUILD__: demo ? 'true' : 'false' },
   // the approved 3D car (GLB) is read by our own parser from a data URL (no fetch in the mini game)
   loader: { '.png': 'file', '.jpg': 'file', '.jpeg': 'file', '.json': 'json', '.glb': 'dataurl' },
   assetNames: 'assets/[name]-[hash]',

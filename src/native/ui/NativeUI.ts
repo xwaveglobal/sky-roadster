@@ -44,7 +44,7 @@ export interface HudState {
 
 const BASE = ['loading', 'start', 'tracks', 'garage', 'missions', 'ranks', 'daily', 'events', 'shop', 'hud', 'countdown', 'tutprompt'];
 /** overlay draw order (bottom → top) */
-export const OVERLAYS = ['finish', 'gameover', 'runrank', 'continue', 'pause', 'tutdone', 'tutintro', 'settings', 'guide', 'eventres', 'profile', 'bonus', 'specialpick', 'bag', 'bagbuy', 'boostinfo', 'spconfirm', 'rankguide', 'account', 'cloudpick', 'classup', 'sharepv', 'popup', 'logs'];
+export const OVERLAYS = ['finish', 'gameover', 'runrank', 'continue', 'pause', 'tutdone', 'tutintro', 'settings', 'guide', 'eventres', 'profile', 'bonus', 'specialpick', 'bag', 'bagbuy', 'boostinfo', 'spconfirm', 'rankguide', 'account', 'cloudpick', 'classup', 'sharepv', 'popup', 'logs', 'demopick'];
 
 export class UI {
   /** Game uses root.getBoundingClientRect() to map 3D → screen */
