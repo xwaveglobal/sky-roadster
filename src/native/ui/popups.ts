@@ -1,7 +1,7 @@
 /** v3 native UI — overlays: results, pause, revive, settings, profile, Magic Bag, popups… */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { LOG, logErrors } from '../log.ts';
-import { C, Gfx, bar, button, card, fmt, iconBtn, panel, rankBadge, toggle, type BtnStyle } from './gfx.ts';
+import { C, Gfx, bar, button, card, fmt, iconBtn, panel, rankBadge, rankBadgeW, toggle, type BtnStyle } from './gfx.ts';
 import type { UI } from './NativeUI.ts';
 import { BAG_ICON, BOLT, BONUS_COLOR, BONUS_EMOJI, ICON, ITEM_ICON, ITEM_NAME, LOCKED_ICON, SPECIAL_COLOR, SPECIAL_HOW, SPECIAL_LINE, SPECIAL_SHORT, TUT_ICON, WIFI, BOOST_WHAT } from './consts.ts';
 import { safeBottom, safeTop } from './layout.ts';
@@ -392,7 +392,8 @@ function classupOv(ui: UI, g: Gfx) {
   const ease = 1 + 0.25 * Math.sin(pop * Math.PI) * (1 - pop);
   g.text('CLASS PROMOTION', W / 2, top + 10, { size: 13, align: 'center', color: 'rgba(255,255,255,.75)' });
   const bh = 104 * ease;
-  rankBadge(g, o.cls, W / 2 - (bh * 1.15) / 2, top + 34 + (104 - bh) / 2, bh, cc);
+  // v5: centred by its real width (AAA / SSS plates are wider than one letter's)
+  rankBadge(g, o.cls, W / 2 - rankBadgeW(g, o.cls, bh) / 2, top + 34 + (104 - bh) / 2, bh, cc);
   g.alpha(Math.min(1, Math.max(0, (t - 0.35) / 0.5)));
   g.text(`Class ${o.cls}`, W / 2, top + 170, { size: 36, align: 'center', italic: true });
   g.para(o.sub, W / 2 - 150, top + 192, 300, { size: 14, align: 'center', font: 'b', color: 'rgba(255,255,255,.8)' });

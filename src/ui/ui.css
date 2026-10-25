@@ -2731,3 +2731,7 @@ svg.xpt { width: 1.05em; height: 1.05em; flex: none; vertical-align: -0.18em; }
 #demopick .demo-list .btn small { font: 700 11px var(--font-body); opacity: .75; font-style: normal; }
 #demopick .demo-sp { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; width: 100%; }
 #demopick .demo-sp .btn { min-width: 0; font-size: 12px; }
+/* v5: two / three letter classes (AA, AAA, SS, SSS) stay inside the hex emblem */
+#classup .cu-emblem.len2 span { font-size: 48px; letter-spacing: -2px; }
+#classup .cu-emblem.len3 span { font-size: 36px; letter-spacing: -2px; }
+@media (max-height: 680px) { #classup .cu-emblem.len2 span { font-size: 38px; } #classup .cu-emblem.len3 span { font-size: 29px; } }

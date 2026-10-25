@@ -1991,6 +1991,10 @@ export class UI {
     if (!sc) return;
     sc.style.setProperty('--cc', o.color);
     this.setAll('cucls', o.cls);
+    // v5: AA / AAA / SSS fit inside the hex emblem (smaller letters for 2–3 characters)
+    const em = $(this.root, '[data-k="cuemblem"]');
+    em.classList.toggle('len2', o.cls.length === 2);
+    em.classList.toggle('len3', o.cls.length >= 3);
     this.setAll('cutitle', `Class ${o.cls}`);
     this.setAll('cusub', o.sub);
     const car = $(this.root, '[data-k="cucar"]');

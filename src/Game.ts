@@ -55,6 +55,7 @@ import type { ItemKey, QuestStat, Reward } from './meta/Daily.ts';
 import { careerDefaults, settleCareer } from './meta/Career.ts';
 import { Cloud } from './net/Cloud.ts';
 import type { SetPiece } from './gameplay/Spawner.ts';
+import { WallGates } from './render/WallGates.ts';
 import { BonusTunnels } from './render/BonusTunnels.ts';
 import { drawShareCard, shareImage, copyText } from './ui/ShareCard.ts';
 import { ITEM_PRICE, UNLOCK_BOOSTS, V1_ITEM_PRICE, SPECIALS, type SpecialKey } from './meta/Daily.ts';
@@ -243,6 +244,8 @@ export class Game {
   private lastResult = { coins: 0, reward: 0, doubled: false };
   /** first-run pilot training */
   private bonusTunnels = new BonusTunnels();
+  /** v5 mock-up: the Wall Run gates (three panels + one slit by the wall) — autoplay Wall Run scene only */
+  private wallGates = new WallGates();
   private tutorialMode = false;
   /** the special practice that is running (null = basic / advanced training) */
   private lastPractice: BoostKind | null = null;
@@ -343,6 +346,7 @@ export class Game {
     this.particles.density = this.smoke.density = GRAPHICS[this.renderer.quality].particles;
     this.renderer.scene.add(this.smoke.points);
     scene.add(this.bonusTunnels.group);
+    scene.add(this.wallGates.group);
     scene.add(this.particles.points, this.speedLines.lines, this.rings.group, this.debris.group, this.shatter.group, this.vehicle.crash.group, this.portal.group, this.startArch, this.finishArch);
 
     this.world.hooks = {
@@ -1990,6 +1994,7 @@ export class Game {
     if (DEMO?.kind === 'aaa' && !this.course && !this.tutorialMode) startDist = Math.max(0, rankDist(RANK_ORDER.indexOf('AAA'), level, this.variant) - 650);
     this.debugStart = startDist > 0 && !DEMO; // (an autoplay scene counts on screen — it never saves)
     this.world.reset(Math.floor(Math.random() * 1e9), this.course, level, startDist, this.course || this.tutorialMode ? 'endless' : this.variant);
+    this.wallGates.set([]);
     this.bonusTunnels.set(this.course?.bonus ? this.world.spawner.tunnels() : [], this.course?.bonus ? this.course.world : null);
     this.tutStep = 0;
     this.tutHint = 0;
@@ -2741,6 +2746,7 @@ export class Game {
     // ---- track mode: gates, sections, finish line
     const c = this.course;
     this.bonusTunnels.update(w.dist); // Bonus roads + the autoplay Tunnel Rider stage
+    this.wallGates.update(w.dist);
     if (c) {
       if (this.state === 'run' || this.state === 'respawn') this.runTime += dt;
       this.startArch.position.z = -(14 - w.dist);
@@ -4004,7 +4010,13 @@ export class Game {
     const from = w.dist + BONUS_SET.lead;
     const len = k === 'tunnel' ? BONUS_SET.tunnelLen : (BONUS_SET.len[k] ?? 40);
     const piece = { kind: k, pick: w.dist, from, to: from + len, filled: true };
-    w.injectRows(w.spawner.buildSetPiece(piece));
+    if (k === 'wall') {
+      // v5 mock-up: three solid panels with a slit against the wall on the side the car runs (visual only)
+      const side = w.player.x >= 0 ? 1 : -1;
+      const gates: { dist: number; side: 1 | -1 }[] = [];
+      for (let d = from + 6; d <= from + len; d += 14) gates.push({ dist: d, side });
+      this.wallGates.set(gates);
+    } else w.injectRows(w.spawner.buildSetPiece(piece));
     if (k === 'escape') this.run.escapes = Math.max(1, this.run.escapes);
     this.setPiece = piece;
     const msg: Record<string, string> = { super: 'CAR WALL AHEAD', hyper: 'TRUCK CONVOY AHEAD', escape: 'TRAFFIC JAM AHEAD', wall: 'ROAD BLOCKED AHEAD', rail: 'BUSY STRETCH AHEAD', ghost: 'LASER ZONE AHEAD', tunnel: 'TUNNEL AHEAD' };
