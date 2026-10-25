@@ -21,7 +21,7 @@ export interface SaveData {
   unlocked: string[];
   upgrades: { engine: number; shield: number; magnet: number };
   missions: { active: { id: string; progress: number }[]; completed: number; rank: number };
-  settings: { sound: boolean; music: boolean; quality: 'high' | 'medium' | 'low'; gfx3?: boolean; speed: 'easy' | 'normal' | 'hard'; assist?: boolean; comfort?: boolean; autoClaim?: boolean; vibrate?: boolean; lang?: string; /** "Camera motion": race camera moves with the car — unset / false = fixed view (default OFF) */ camMotion?: boolean; /** v5: the HI / Camera-motion-ON defaults were applied once */ v5defaults?: boolean };
+  settings: { sound: boolean; music: boolean; quality: 'high' | 'medium' | 'low'; gfx3?: boolean; speed: 'easy' | 'normal' | 'hard'; assist?: boolean; comfort?: boolean; autoClaim?: boolean; vibrate?: boolean; lang?: string; /** "Camera motion": race camera moves with the car — unset / false = fixed view (default OFF) */ camMotion?: boolean; /** v5: the HI / Camera-motion-ON defaults were applied once */ v5defaults?: boolean; /** v5 video build: Settings → Autoplay (never saved — the session is a sandbox once it is on) */ autoplay?: boolean };
   /** rewarded "free coins": day key + how many claimed that day */
   adFreeDay?: string;
   adFreeCount?: number;

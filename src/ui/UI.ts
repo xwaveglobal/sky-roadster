@@ -97,6 +97,8 @@ export interface UIHandlers {
   toggleVibrate(): void;
   /** v4.6 setting: the race camera moves with the car (lanes, jumps, dives); off = fixed view */
   toggleCamMotion(): void;
+  /** v5 video build: Settings → Autoplay switch */
+  toggleAutoplay?: () => void;
   skipTutorial(): void;
   // ---- ads
   continueAd(): void;
@@ -430,11 +432,12 @@ export class UI {
           <div class="stile"><span class="si">${ICON.info}</span><span class="sl">Hint arrows</span><button class="switch" data-a="assist" role="switch" aria-label="Danger arrows"><i></i></button></div>
           <div class="stile"><span class="si">◐</span><span class="sl">Eye comfort</span><button class="switch" data-a="comfort" role="switch" aria-label="Comfort visuals"><i></i></button></div>
           <div class="stile"><span class="si">🎥</span><span class="sl">Camera motion</span><button class="switch" data-a="cammotion" role="switch" aria-label="Camera moves with the car"><i></i></button></div>
+          ${DEMO_MENU ? `<div class="stile wide"><span class="si">🎬</span><span class="sl">Autoplay · races drive themselves</span><button class="switch" data-a="autoplay" role="switch" aria-label="Autoplay"><i></i></button></div>` : ''}
           <div class="stile wide"><span class="si">${ICON.gear}</span><span class="sl">Graphics</span><div class="seg" data-k="qseg"><button data-a="quality" data-v="low">LO</button><button data-a="quality" data-v="medium">MED</button><button data-a="quality" data-v="high">HI</button></div></div>
         </div>
         <button class="srow lang acct" data-a="account"><span class="si">☁️</span><span class="sl">Account</span><b data-k="acctline">Guest</b>${ICON.chevR}</button>
         <button class="srow lang" data-a="lang"><span class="si">🌐</span><span class="sl">Language</span><b data-k="langname">English</b>${ICON.chevR}</button>
-        ${DEMO_MENU ? `<button class="srow lang" data-a="demomenu"><span class="si">🎬</span><span class="sl">Autoplay (video)</span><b>4 scenes</b>${ICON.chevR}</button>` : ''}
+        ${DEMO_MENU ? `<button class="srow lang" data-a="demomenu"><span class="si">🎬</span><span class="sl">Autoplay scenes</span><b>4 scenes</b>${ICON.chevR}</button>` : ''}
         <div class="sbtns compact">
           <button class="btn sm ghost" data-a="profile">${ICON.user} Profile</button>
           <button class="btn sm ghost" data-a="help">${ICON.info} How to play</button>
@@ -837,6 +840,7 @@ export class UI {
         case 'comfort': return this.h.toggleComfort();
         case 'vibrate': return this.h.toggleVibrate();
         case 'cammotion': return this.h.toggleCamMotion();
+        case 'autoplay': return this.h.toggleAutoplay?.();
         case 'tutskip': return this.h.skipTutorial();
         case 'track': return this.h.pickTrack(el.dataset.id!);
         case 'spick': {
@@ -1126,6 +1130,7 @@ export class UI {
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="music"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.music)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="comfort"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.comfort !== false)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="cammotion"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.camMotion === true)));
+    this.root.querySelectorAll<HTMLElement>('.switch[data-a="autoplay"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.autoplay === true)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="vibrate"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.vibrate !== false)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="assist"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.assist !== false)));
     const q = this.liveQuality ?? s.settings.quality;

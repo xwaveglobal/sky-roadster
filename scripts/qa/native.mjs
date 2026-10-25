@@ -349,6 +349,32 @@ try {
       G.ui.h.settings();
     });
     await until(() => window.__xwave.ui.shown.has('settings'));
+    // the Autoplay switch: a normal race then drives itself
+    const sw = await tap('s-autoplay');
+    check(sw && (await ev(() => window.__xwave.save.settings.autoplay === true)), 'Settings → Autoplay switch ON (video build)');
+    await shot('17a_settings_autoplay');
+    await ev(() => {
+      const G = window.__xwave;
+      G.ui.hideOverlay('settings');
+      G.pickTrackId = 'endless';
+      G.goRace(false);
+    });
+    for (let i = 0; i < 60 && (await state()) !== 'run'; i++) await ev(() => window.__xwave.advance(0.25));
+    const a0 = await ev(() => ({ lane: window.__xwave.world.player.lane, d: window.__xwave.world.dist }));
+    let lanes = new Set([a0.lane]);
+    for (let i = 0; i < 120; i++) {
+      await ev(() => window.__xwave.advance(0.25));
+      if (i % 4 === 0) lanes.add(await ev(() => window.__xwave.world.player.lane));
+    }
+    const a1 = await ev(() => ({ s: window.__xwave.state, d: Math.round(window.__xwave.world.dist), lives: window.__xwave.run.lives }));
+    check(a1.s === 'run' && a1.d > a0.d + 300 && lanes.size > 1, 'Autoplay ON: the race drives itself (changes lanes, never crashes out)', { ...a1, lanes: [...lanes] });
+    await shot('17b_autoplay_race');
+    await ev(() => {
+      const G = window.__xwave;
+      G.goHome();
+      G.ui.h.settings();
+    });
+    await until(() => window.__xwave.ui.shown.has('settings'));
     const hasRow = await tap('s-demo');
     check(hasRow, 'Settings → Autoplay row (video build)');
     await until(() => window.__xwave.ui.shown.has('demopick'));

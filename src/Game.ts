@@ -59,7 +59,7 @@ import { BonusTunnels } from './render/BonusTunnels.ts';
 import { drawShareCard, shareImage, copyText } from './ui/ShareCard.ts';
 import { ITEM_PRICE, UNLOCK_BOOSTS, V1_ITEM_PRICE, SPECIALS, type SpecialKey } from './meta/Daily.ts';
 import { dayKey } from './core/Save.ts';
-import { IS_NATIVE } from './core/demoFlag.ts';
+import { DEMO_MENU, IS_NATIVE } from './core/demoFlag.ts';
 import { restartSpecial } from './meta/Restart.ts';
 import { platform } from './platform.ts';
 
@@ -105,7 +105,7 @@ let DEMO = (() => {
   const sp = /[?&]sp=(\w+)/.exec(location.search)?.[1] ?? 'super';
   return { kind: m[1] as DemoKind, sp: ((DEMO_SPECIALS as readonly string[]).includes(sp) ? sp : 'super') as (typeof DEMO_SPECIALS)[number] };
 })();
-export { DEMO_MENU } from './core/demoFlag.ts';
+export { DEMO_MENU };
 /** coins for one Roadster Jump bought on the spot (training / blockade) */
 /** welcome-back gift after this many hours away */
 const WELCOME_AFTER_H = 12;
@@ -567,6 +567,7 @@ export class Game {
       toggleQuality: (v?: string) => this.toggleQuality(v),
       toggleAssist: () => this.toggleAssist(),
       toggleComfort: () => this.toggleComfort(),
+      toggleAutoplay: () => this.toggleAutoplay(),
       toggleCamMotion: () => {
         this.save.settings.camMotion = this.save.settings.camMotion !== true; // default OFF (owner 2026-10-25)
         this.rig.dynamic = this.save.settings.camMotion;
@@ -2588,6 +2589,8 @@ export class Game {
 
     if (this.autopilot && this.state === 'run') this.autopilot.update(w, dt, (a) => p.input(a));
     if (this.demo && this.state === 'run') this.demoUpdate(dt);
+    // v5 video build: Settings → Autoplay ON — every race drives itself (the scenes above have their own driving)
+    else if (this.autoplayOn && this.state === 'run' && !this.tutorialMode && !this.superFlight && !p.isAirDash) this.demoPilot.update(w, dt, (a) => p.input(a));
 
     // ---- fixed sub-steps for precise collision at high speed
     const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
@@ -2596,7 +2599,7 @@ export class Game {
     // hovering, a bounded extension if the landing spot is briefly blocked
     const dashSafe = this.airDashGuard.update(p, w.obstacles, w.speed * this.speedScale, dt);
     const opts = {
-      invulnerable: this.state !== 'run' || run.invulnerable || dashSafe || (this.tutorialMode && !this.tut.vulnerable) || this.demoSafe,
+      invulnerable: this.state !== 'run' || run.invulnerable || dashSafe || (this.tutorialMode && !this.tut.vulnerable) || this.demoSafe || (this.autoplayOn && !this.tutorialMode),
       // Bonus showcase specials ride the wall / the sky / the roof: obstacles they pass break apart,
       // and coins on the road fly up to the car (it is not down in the lane any more)
       smash: run.turboT > 0 || (!!this.showcaseK && this.showcaseK !== 'ghost'),
@@ -3497,7 +3500,7 @@ export class Game {
 
   // =============================================================== profile
   private persist() {
-    if (DEMO) return; // autoplay scenes run in a sandbox: the real save is never touched
+    if (DEMO || this.sandbox) return; // autoplay runs in a sandbox: the real save is never touched
     this.save.missions.active = this.missions.active.map((a) => ({ id: a.id, progress: a.progress }));
     this.save.missions.completed = this.missions.completed;
     this.save.lastSeen = Date.now();
@@ -3844,6 +3847,20 @@ export class Game {
   private demo: { kind: DemoKind; sp: string; t: number; phase: number; fired: boolean } | null = null;
   /** no collisions (the scene's pilot is flawless) — no shield bubble, nothing drawn */
   private demoSafe = false;
+  /** Settings → Autoplay switch (video build): races drive themselves; once used, nothing is saved this session */
+  private get autoplayOn() {
+    return DEMO_MENU && this.save.settings.autoplay === true;
+  }
+  private sandbox = false;
+  private toggleAutoplay() {
+    if (!DEMO_MENU) return;
+    const on = this.save.settings.autoplay !== true;
+    this.save.settings.autoplay = on;
+    if (on) this.sandbox = true;
+    this.audio.play('click');
+    this.ui.refreshProfile(this.save);
+    this.ui.toast(on ? `${ICON.play} <b>AUTOPLAY ON</b> · races drive themselves · nothing is saved` : `<b>AUTOPLAY OFF</b>`, on ? '#3fe07c' : '#9fb3dd');
+  }
   private demoPilot = new Autopilot();
   private demoT = 0;
   private demoEndAt = 0;

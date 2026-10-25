@@ -624,6 +624,8 @@ function settingsOv(ui: UI, g: Gfx) {
       // v4.6: the race camera moves with the car (lanes, jumps, dives); off (default) = fixed view
       ['cammotion', '🎥', 'Camera motion', s.settings.camMotion === true, () => ui.h.toggleCamMotion()],
     ];
+    // v5 video build: races drive themselves
+    if (DEMO_MENU) tiles.push(['autoplay', '🎬', 'Autoplay', s.settings.autoplay === true, () => ui.h.toggleAutoplay?.()]);
     const tw = (w - 8) / 2;
     tiles.forEach(([k, ic, l, on, fn], i) => {
       const tx = x + (i % 2) * (tw + 8),
@@ -644,7 +646,7 @@ function settingsOv(ui: UI, g: Gfx) {
     // graphics LO / MED / HI (v4: three presets), full width under the switches
     {
       const tx = x,
-        ty = y + 168;
+        ty = y + Math.ceil(tiles.length / 2) * 56;
       card(g, tx, ty, w, 48, 12);
       g.icon(ICON.gear, tx + 8, ty + 13, 22, C.cyan);
       g.text('Graphics', tx + 36, ty + 24, { size: 11.5, maxW: w - 180 });
@@ -657,7 +659,7 @@ function settingsOv(ui: UI, g: Gfx) {
         g.hit(bx - 1, ty + 6, 44, 36, `q-${v}`, () => (on ? undefined : ui.h.toggleQuality(v)));
       });
     }
-    y += 228;
+    y += Math.ceil(tiles.length / 2) * 56 + 60;
     const row = (key: string, ic: string, label: string, val: string, fn: () => void) => {
       g.rr(x, y, w, 44, 12, g.isPressed(key) ? 'rgba(79,195,255,.2)' : 'rgba(10,20,52,.8)', 'rgba(130,175,255,.2)');
       g.text(ic, x + 18, y + 22, { size: 16, align: 'center', noTr: true });
@@ -669,7 +671,7 @@ function settingsOv(ui: UI, g: Gfx) {
     };
     row('s-lang', '🌐', 'Language', LANGS.find((l) => l.code === ui.lang)?.name ?? 'English', () => ui.langPicker());
     // v5 Autoplay (video recording build only)
-    if (DEMO_MENU) row('s-demo', '🎬', 'Autoplay (video)', '4 scenes', () => ui.showOverlay('demopick'));
+    if (DEMO_MENU) row('s-demo', '🎬', 'Autoplay scenes', '4 scenes', () => ui.showOverlay('demopick'));
     const bw = (w - 8) / 2;
     button(g, 's-prof', x, y, bw, 40, `${ICON.user} Profile`, () => ui.h.profile(), { style: 'ghost', size: 12 });
     button(g, 's-help', x + bw + 8, y, bw, 40, `${ICON.info} How to play`, () => ui.h.help(), { style: 'ghost', size: 12 });
