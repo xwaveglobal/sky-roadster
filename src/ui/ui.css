@@ -161,7 +161,7 @@ html, body {
 #hud .side { display: flex; flex-direction: column; gap: 6px; align-items: flex-end; }
 #hud .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 7px; border-radius: 999px; background: var(--panel); border: 1px solid var(--rim-soft); font-size: 15px; font-variant-numeric: tabular-nums; }
 #hud .pill svg { width: 18px; height: 18px; }
-#hud .pill.coins { border-color: rgba(255,194,26,.5); }
+#hud .pill.coins { border-color: rgba(79,214,255,.55); } /* v5: energy-crystal coin */
 #hud .row2 { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
 #hud .hearts { display: flex; gap: 2px; }
 #hud .hearts svg { width: 22px; height: 22px; filter: drop-shadow(0 2px 4px rgba(0,0,0,.4)); }

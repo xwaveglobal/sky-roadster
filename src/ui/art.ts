@@ -8,42 +8,36 @@ const id = (p: string) => `${p}${++uid}`;
 
 /** one gold coin seen face-on, with the XWAVE bolt */
 export function coinFace(size = 28) {
+  // v5: the energy crystal (option A)
   const g = id('cf');
   return `<svg class="art-coin" width="${size}" height="${size}" viewBox="0 0 40 40" aria-hidden="true">
-    <defs><radialGradient id="${g}" cx="35%" cy="30%" r="75%"><stop offset="0" stop-color="#fff6b0"/><stop offset=".45" stop-color="#ffd23d"/><stop offset="1" stop-color="#e08a00"/></radialGradient></defs>
-    <circle cx="20" cy="20" r="19" fill="#b86a00"/><circle cx="20" cy="19" r="18" fill="url(#${g})"/>
-    <circle cx="20" cy="19" r="13.5" fill="none" stroke="#c77800" stroke-width="2" opacity=".55"/>
-    <path d="M22.5 8.5 13 21h6l-2 10 9.5-12.5h-6z" fill="#fff4c2" stroke="#b86a00" stroke-width="1.2" stroke-linejoin="round"/></svg>`;
+    <defs><linearGradient id="${g}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9fbff"/><stop offset=".5" stop-color="#4fd6ff"/><stop offset="1" stop-color="#1a5fd8"/></linearGradient></defs>
+    <path d="M20 2 33 14 20 38 7 14z" fill="url(#${g})" stroke="#0e3c9a" stroke-width="1.4" stroke-linejoin="round"/>
+    <path d="M7 14h26M20 2l-5 12 5 24 5-24z" fill="none" stroke="#e8fdff" stroke-width="1.1" opacity=".75"/><path d="M12 9 20 3 17 13z" fill="#fff" opacity=".7"/></svg>`;
 }
 
-/** a pile of coins in perspective (stacks + loose coins + sparkles) */
+/** a pile of energy crystals (v5, option A): a cluster of gems + loose ones + sparkles */
 export function coinPile(w = 220, h = 120) {
-  const top = id('ct');
-  const side = id('cs');
+  const g1 = id('ct');
   const glow = id('cg');
-  const stack = (x: number, y: number, n: number) => {
-    let s = '';
-    for (let i = 0; i < n; i++) {
-      const yy = y - i * 7;
-      s += `<rect x="${x - 22}" y="${yy}" width="44" height="8" fill="url(#${side})"/><ellipse cx="${x}" cy="${yy + 8}" rx="22" ry="8" fill="#a95e00"/>`;
-      s += `<ellipse cx="${x}" cy="${yy}" rx="22" ry="8" fill="url(#${top})" stroke="#c77800" stroke-width="1"/>`;
-    }
-    const ty = y - (n - 1) * 7;
-    s += `<path d="M${x + 2} ${ty - 5}l-6 6h4l-2 4 7-6h-4z" fill="#fff4c2" stroke="#b86a00" stroke-width=".8"/>`;
-    return s;
+  // one crystal: centre x, bottom y, height h (width = 0.54 h), tilt in degrees
+  const gem = (x: number, y: number, hh: number, rot = 0) => {
+    const ww = hh * 0.54,
+      top = y - hh,
+      mid = y - hh * 0.7;
+    return `<g transform="rotate(${rot} ${x} ${y})"><path d="M${x} ${top} L${x + ww / 2} ${mid} L${x} ${y} L${x - ww / 2} ${mid}z" fill="url(#${g1})" stroke="#0e3c9a" stroke-width="1.3" stroke-linejoin="round"/>` +
+      `<path d="M${x - ww / 2} ${mid}H${x + ww / 2}M${x} ${top}L${x - ww * 0.2} ${mid}L${x} ${y}L${x + ww * 0.2} ${mid}z" fill="none" stroke="#e8fdff" stroke-width="1" opacity=".7"/>` +
+      `<path d="M${x - ww * 0.3} ${mid - hh * 0.1}L${x} ${top + 2}L${x - ww * 0.08} ${mid}z" fill="#fff" opacity=".6"/></g>`;
   };
-  const loose = (x: number, y: number, r: number, rot: number) =>
-    `<g transform="translate(${x} ${y}) rotate(${rot}) scale(1 .62)"><circle r="${r + 1.5}" fill="#a95e00"/><circle r="${r}" cy="-1.5" fill="url(#${top})"/><path d="M2 -9l-7 9h4.5l-1.5 7 7-9h-4.5z" fill="#fff4c2" stroke="#b86a00" stroke-width=".8"/></g>`;
-  const spark = (x: number, y: number, s: number) => `<path d="M${x} ${y - s}L${x + s * 0.28} ${y - s * 0.28}L${x + s} ${y}L${x + s * 0.28} ${y + s * 0.28}L${x} ${y + s}L${x - s * 0.28} ${y + s * 0.28}L${x - s} ${y}L${x - s * 0.28} ${y - s * 0.28}z" fill="#fff8d0"/>`;
+  const spark = (x: number, y: number, s: number) => `<path d="M${x} ${y - s}L${x + s * 0.28} ${y - s * 0.28}L${x + s} ${y}L${x + s * 0.28} ${y + s * 0.28}L${x} ${y + s}L${x - s * 0.28} ${y + s * 0.28}L${x - s} ${y}L${x - s * 0.28} ${y - s * 0.28}z" fill="#e8fdff"/>`;
   return `<svg class="art-pile" width="${w}" height="${h}" viewBox="0 0 220 120" aria-hidden="true">
     <defs>
-      <linearGradient id="${top}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff3a0"/><stop offset=".5" stop-color="#ffcf30"/><stop offset="1" stop-color="#f09a00"/></linearGradient>
-      <linearGradient id="${side}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#c46f00"/><stop offset=".5" stop-color="#ffc021"/><stop offset="1" stop-color="#b56300"/></linearGradient>
-      <radialGradient id="${glow}" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#ffcc33" stop-opacity=".55"/><stop offset="1" stop-color="#ffcc33" stop-opacity="0"/></radialGradient>
+      <linearGradient id="${g1}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#d9fbff"/><stop offset=".5" stop-color="#4fd6ff"/><stop offset="1" stop-color="#1a5fd8"/></linearGradient>
+      <radialGradient id="${glow}" cx="50%" cy="70%" r="60%"><stop offset="0" stop-color="#4fd6ff" stop-opacity=".5"/><stop offset="1" stop-color="#4fd6ff" stop-opacity="0"/></radialGradient>
     </defs>
-    <ellipse cx="110" cy="100" rx="100" ry="22" fill="url(#${glow})"/>
-    ${stack(62, 92, 4)}${stack(150, 94, 3)}${stack(106, 98, 6)}
-    ${loose(30, 104, 15, -18)}${loose(188, 104, 14, 22)}${loose(78, 34, 12, -30)}${loose(170, 38, 11, 28)}
+    <ellipse cx="110" cy="102" rx="100" ry="20" fill="url(#${glow})"/>
+    ${gem(70, 104, 62, -14)}${gem(150, 104, 58, 14)}${gem(110, 108, 92, 0)}
+    ${gem(38, 110, 34, -26)}${gem(184, 110, 32, 24)}${gem(88, 60, 22, -30)}${gem(140, 54, 20, 28)}
     ${spark(26, 36, 7)}${spark(200, 64, 6)}${spark(130, 14, 5)}
   </svg>`;
 }

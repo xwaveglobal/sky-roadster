@@ -42,6 +42,10 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 - Wall Run = the car drives on the side wall (a wall panel; `showX` → the camera).
 - Zenith → named "XWAVE", white, with neutral lights; Vega is ice blue now.
 - The rear badge is the owner's logo (traced polygons, `RENDER.badgeScale`).
+- **Coin = ENERGY CRYSTAL** (owner picked option A of 4, 2026-10-25 — a round gold coin read as real money):
+  - the 24 px `ICON.coin` (solid facets, no gradient ids), `coinFace` / `coinPile` (art.ts);
+  - the 3D coin is a six-sided `LatheGeometry` gem, flat-shaded cyan (`PickupViews`), with a cyan glow and pickup burst, and the HUD pill border.
+  - The word "coins" stays.
 - Lighter images (owner 2026-10-25): every image re-compressed, 3.6 MB → about 1.3 MB.
   - The web loading art is 540×960 / 50 KB, and the TikTok `loading.jpg` is 480×853 / ≤ 45 KB (`scripts/native-images.py` special case).
   - Rear car pictures are 768 px (`thumbs-pack.py`).

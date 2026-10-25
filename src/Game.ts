@@ -2904,7 +2904,7 @@ export class Game {
       switch (f.t) {
         case 'coin': {
           this.audio.play('coin');
-          this.particles.burst(f.x, f.y, 0, CALM.coin.burst, 0xffd23d, CALM.coin.burstSize, 0.25, 0.3, { drag: 4 }); // v5: calmer coin pickup
+          this.particles.burst(f.x, f.y, 0, CALM.coin.burst, 0x7fe6ff, CALM.coin.burstSize, 0.25, 0.3, { drag: 4 }); // v5: calmer coin pickup
           const s = this.toScreen(f.x, f.y, f.z);
           if (s) this.ui.flyTo(s.x, s.y, ICON.coin, 'coins', 70);
           break;

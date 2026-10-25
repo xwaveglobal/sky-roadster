@@ -3,7 +3,7 @@ import { CALM } from '../config.ts';
 import { Pool } from '../core/Pool.ts';
 import type { LivePickup } from '../gameplay/World.ts';
 import type { PickupKind } from '../gameplay/types.ts';
-import { coinFaceTexture, glowTexture, iconTexture, labelTexture } from './textures.ts';
+import { glowTexture, iconTexture, labelTexture } from './textures.ts';
 
 const MAX_COINS = 220;
 
@@ -250,12 +250,11 @@ export class PickupViews {
   private p = new THREE.Vector3();
 
   constructor(private parent: THREE.Object3D) {
-    const geo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 28);
-    geo.rotateX(Math.PI / 2);
-    const face = coinFaceTexture();
-    const side = new THREE.MeshStandardMaterial({ color: 0xffb81c, metalness: 1, roughness: 0.25, emissive: 0xff9a00, emissiveIntensity: CALM.coin.sideEmissive });
-    const cap = new THREE.MeshStandardMaterial({ map: face, metalness: 0.7, roughness: 0.3, emissive: 0xffffff, emissiveMap: face, emissiveIntensity: CALM.coin.capEmissive });
-    this.coins = new THREE.InstancedMesh(geo, [side, cap, cap], MAX_COINS);
+    // v5 (owner 2026-10-25, option A): the coin is an ENERGY CRYSTAL — a faceted six-sided gem (short crown,
+    // long point), spinning; flat facets catch the light so it sparkles without a big glow
+    const geo = new THREE.LatheGeometry([new THREE.Vector2(0, 0.34), new THREE.Vector2(0.3, 0.12), new THREE.Vector2(0.001, -0.5)], 6);
+    const gem = new THREE.MeshStandardMaterial({ color: 0x7fe6ff, metalness: 0.15, roughness: 0.12, flatShading: true, emissive: 0x1a8cff, emissiveIntensity: CALM.coin.capEmissive * 1.6 });
+    this.coins = new THREE.InstancedMesh(geo, gem, MAX_COINS);
     this.coins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.coins.count = 0;
     this.coins.frustumCulled = false;
@@ -263,7 +262,7 @@ export class PickupViews {
     const glowGeo = new THREE.PlaneGeometry(1.5, 1.5);
     this.coinGlow = new THREE.InstancedMesh(
       glowGeo,
-      new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffb020, transparent: true, opacity: CALM.coin.glowOpacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+      new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0x4fd6ff, transparent: true, opacity: CALM.coin.glowOpacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
       MAX_COINS,
     );
     this.coinGlow.count = 0;

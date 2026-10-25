@@ -45,7 +45,8 @@ export const ICON = {
   lock: svg('<rect x="5" y="10.5" width="14" height="10" rx="2.4" fill="currentColor"/><path d="M8.3 10.5V8a3.7 3.7 0 0 1 7.4 0v2.5" fill="none" stroke="currentColor" stroke-width="2.2"/>'),
   engine: svg('<path d="M3 12h3l2-4h7l2 3h2v-2h2v8h-2v-2h-2l-2 3H9l-2-3H3z" fill="currentColor"/>'),
   // game items (full colour)
-  coin: svg('<circle cx="12" cy="12" r="10" fill="#ffc21a"/><circle cx="12" cy="12" r="7.6" fill="none" stroke="#fff3a0" stroke-width="1.4"/><path d="M13 5.8 8.8 12.6h3l-1 5.6 4.6-7.4h-3z" fill="#b35a00"/>'),
+  // v5 (owner 2026-10-25): the coin is an ENERGY CRYSTAL (option A) — no round gold coin, nothing that reads as real money
+  coin: svg('<path d="M12 1.3 19.8 8.4 12 22.7 4.2 8.4z" fill="#3cc8ff" stroke="#0e3c9a" stroke-width="1" stroke-linejoin="round"/><path d="M12 1.3 19.8 8.4 12 22.7 15 8.4z" fill="#1f7fe6"/><path d="M4.2 8.4 12 1.3 9 8.4z" fill="#bff4ff"/><path d="M9 8.4h6L12 22.7z" fill="#7fe6ff"/><path d="M4.2 8.4h15.6" stroke="#e8fdff" stroke-width=".8" opacity=".8"/><path d="M12 1.3 19.8 8.4 12 22.7 4.2 8.4z" fill="none" stroke="#0e3c9a" stroke-width="1" stroke-linejoin="round"/>'),  // (solid facets: no gradient ids, the icon is inlined many times)
   heart: svg('<path d="M12 20.5s-8-4.8-8-10.6A4.4 4.4 0 0 1 12 7.4a4.4 4.4 0 0 1 8 2.5c0 5.8-8 10.6-8 10.6z" fill="#ff3b6b"/><path d="M7.5 8.5a2.5 2.5 0 0 1 2.4-1.2" stroke="#ffd0dc" stroke-width="1.4" fill="none" stroke-linecap="round"/>'),
   heartEmpty: svg('<path d="M12 20.5s-8-4.8-8-10.6A4.4 4.4 0 0 1 12 7.4a4.4 4.4 0 0 1 8 2.5c0 5.8-8 10.6-8 10.6z" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.35)" stroke-width="1.2"/>'),
   shield: svg('<path d="M12 2.8 4.5 5.6v5.6c0 4.7 3.2 8.6 7.5 10 4.3-1.4 7.5-5.3 7.5-10V5.6z" fill="#3d9bff"/><path d="M12 6 7.6 7.7v3.6c0 2.9 1.9 5.3 4.4 6.3 2.5-1 4.4-3.4 4.4-6.3V7.7z" fill="#bfe4ff"/>'),
