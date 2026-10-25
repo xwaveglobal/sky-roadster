@@ -20,6 +20,6 @@ def pack(f, size, pad):
 for f in sorted(os.listdir(src)):
     if not f.endswith('.png'): continue
     view, car = f[:-4].split('-', 1)
-    if view == 'card': pack(os.path.join(src, f), (512, 512), 0.05).save(os.path.join(dst, f'{car}.webp'), 'WEBP', quality=88, method=6)
-    if view == 'rear': pack(os.path.join(src, f), (1024, 588), 0.03).save(os.path.join(dst, f'rear-{car}.webp'), 'WEBP', quality=88, method=6)
+    if view == 'card': pack(os.path.join(src, f), (512, 512), 0.05).save(os.path.join(dst, f'{car}.webp'), 'WEBP', quality=80, method=6)
+    if view == 'rear': pack(os.path.join(src, f), (768, 441), 0.03).save(os.path.join(dst, f'rear-{car}.webp'), 'WEBP', quality=80, method=6)  # v5: lighter
 print('ok')

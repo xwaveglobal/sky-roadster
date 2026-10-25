@@ -37,9 +37,18 @@ for d, _, files in os.walk(SRC):
             q = im.convert('RGBA').quantize(colors=255, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE)
             p = os.path.join(OUT, name + '.png')
             q.save(p, optimize=True)
+        elif name == 'loading':
+            # v5 (owner): the TikTok loading art ≤ 45 KB (480×853, a touch of smoothing, then the quality that fits)
+            from PIL import ImageFilter
+            p = os.path.join(OUT, name + '.jpg')
+            sm = im.convert('RGB').resize((480, 853), Image.LANCZOS).filter(ImageFilter.GaussianBlur(0.7))
+            for qq in range(62, 30, -2):
+                sm.save(p, quality=qq, optimize=True, progressive=False)
+                if os.path.getsize(p) <= 45 * 1024:
+                    break
         else:
             p = os.path.join(OUT, name + '.jpg')
-            im.convert('RGB').save(p, quality=82, optimize=True, progressive=False)
+            im.convert('RGB').save(p, quality=66, optimize=True, progressive=False)  # v5: smaller package, same look
         total += os.path.getsize(p)
         print(f'{os.path.relpath(p, ROOT)}  {im.size[0]}×{im.size[1]}  {os.path.getsize(p) // 1024} KB')
 print(f'total {total / 1024:.0f} KB')

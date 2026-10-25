@@ -42,6 +42,12 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 - Wall Run = the car drives on the side wall (a wall panel; `showX` → the camera).
 - Zenith → named "XWAVE", white, with neutral lights; Vega is ice blue now.
 - The rear badge is the owner's logo (traced polygons, `RENDER.badgeScale`).
+- Lighter images (owner 2026-10-25): every image re-compressed, 3.6 MB → about 1.3 MB.
+  - The web loading art is 540×960 / 50 KB, and the TikTok `loading.jpg` is 480×853 / ≤ 45 KB (`scripts/native-images.py` special case).
+  - Rear car pictures are 768 px (`thumbs-pack.py`).
+  - `xwave-logo.png` / `xwave-mark.png` were removed: the billboards draw the traced logo in chrome (`render/textures.ts` `chromeLogo`).
+  - An instant web loading screen: `index.html` `#boot` (an 11 KB inline preview and a bar) paints before `main.js` arrives. `main.ts` fades it out.
+  - Web `main.js` 3.6 → 3.1 MB; TikTok folder 3.67 → 3.51 MB. Native QA 26 / 26.
 - A brighter screen: `RENDER.exposure` 1.05 → 1.2. The owner approved it on the web, then on native.
 - The class-up hex emblem fits AA / AAA / SSS (web `.len2` / `.len3`; native centred by `rankBadgeW`).
 - MOCK-UP for approval: the Wall Run gate (`src/render/WallGates.ts`) = three solid panels across the road, with one 1.5 m slit against the wall on the run side. It is shown only in the autoplay Wall Run scene (visual only). Once the owner approves: use it for the Bonus wall set piece too.

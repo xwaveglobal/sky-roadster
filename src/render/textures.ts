@@ -1,6 +1,5 @@
 import * as THREE from 'three';
-import logoFullUrl from '../assets/images/xwave-logo.png';
-import logoMarkUrl from '../assets/images/xwave-mark.png';
+import { XWAVE_LOGO, drawXwaveLogo } from './car/x1Textures.ts';
 
 /**
  * Procedural canvas textures. Everything visual is generated at runtime so the
@@ -50,28 +49,62 @@ function memo(key: string, make: () => THREE.Texture) {
 }
 
 /**
- * Brand logo images (the official chrome XWAVE artwork). Loaded once; textures
- * that use them are created immediately and redrawn when the image arrives.
+ * Brand logo (v5: the owner's XWAVE logo drawn from its traced shapes — no image files to download).
+ * A chrome look: a bright-to-steel gradient, a dark edge underneath for depth. `full` adds the
+ * "INNOVATE BEYOND LIMITS" tagline. Kept as promises so the call sites stay the same.
  */
+function chromeLogo(full: boolean): HTMLCanvasElement {
+  const W = 1000;
+  const lh = (W * XWAVE_LOGO.h) / XWAVE_LOGO.w;
+  const H = Math.ceil(full ? lh + 70 : lh + 12);
+  const c = document.createElement('canvas');
+  c.width = W + 12;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  // depth: a dark copy just below
+  drawXwaveLogo(g, 6, 9, W, '#1d2430');
+  const gr = g.createLinearGradient(0, 0, 0, lh);
+  gr.addColorStop(0, '#ffffff');
+  gr.addColorStop(0.42, '#c9d2e0');
+  gr.addColorStop(0.52, '#7d889c');
+  gr.addColorStop(0.7, '#e8edf5');
+  gr.addColorStop(1, '#9aa5b8');
+  drawXwaveLogo(g, 6, 4, W, gr);
+  if (full) {
+    g.font = '600 46px "Helvetica Neue", Arial, sans-serif';
+    g.textBaseline = 'middle';
+    g.fillStyle = '#d6dce8';
+    const text = 'INNOVATE BEYOND LIMITS';
+    const sp = 14;
+    const tw = g.measureText(text).width + sp * (text.length - 1);
+    let x = (c.width - tw) / 2;
+    for (const ch of text) {
+      g.fillText(ch, x, lh + 40);
+      x += g.measureText(ch).width + sp;
+    }
+  }
+  return c;
+}
 const logoImgs = (() => {
-  const load = (url: string) => {
-    const img = new Image();
-    img.decoding = 'async';
-    const ready = new Promise<HTMLImageElement>((res) => {
-      img.onload = () => res(img);
-      img.onerror = () => res(img);
-    });
-    img.src = url;
-    return ready;
+  let full: Promise<HTMLCanvasElement> | null = null,
+    mark: Promise<HTMLCanvasElement> | null = null;
+  return {
+    get full() {
+      return (full ??= Promise.resolve(chromeLogo(true)));
+    },
+    get mark() {
+      return (mark ??= Promise.resolve(chromeLogo(false)));
+    },
   };
-  return { full: load(logoFullUrl), mark: load(logoMarkUrl) };
 })();
 
-function drawContain(g: CanvasRenderingContext2D, img: HTMLImageElement, x: number, y: number, w: number, h: number) {
-  if (!img.naturalWidth) return;
-  const k = Math.min(w / img.naturalWidth, h / img.naturalHeight);
-  const dw = img.naturalWidth * k;
-  const dh = img.naturalHeight * k;
+function drawContain(g: CanvasRenderingContext2D, img: HTMLImageElement | HTMLCanvasElement, x: number, y: number, w: number, h: number) {
+  const iw = (img as HTMLImageElement).naturalWidth ?? img.width,
+    ih = (img as HTMLImageElement).naturalHeight ?? img.height;
+  if (!iw) return;
+  const k = Math.min(w / iw, h / ih);
+  const dw = iw * k;
+  const dh = ih * k;
   g.drawImage(img, x + (w - dw) / 2, y + (h - dh) / 2, dw, dh);
 }
 

@@ -12,10 +12,17 @@ function webglAvailable() {
 
 const container = document.getElementById('game')!;
 if (!webglAvailable()) {
+  document.getElementById('boot')?.remove();
   container.innerHTML =
     '<div style="position:absolute;inset:0;display:grid;place-items:center;padding:24px;text-align:center;font:600 16px system-ui;color:#cfe7ff">Sky Roadster needs WebGL. Please enable hardware acceleration or try another browser.</div>';
 } else {
   const game = new Game(container);
+  // v5: the game's own loading screen is up — fade out the instant one from index.html
+  const boot = document.getElementById('boot');
+  if (boot) {
+    requestAnimationFrame(() => boot.classList.add('gone'));
+    setTimeout(() => boot.remove(), 600);
+  }
   // ?perf=1 only: scripted profiling hooks (scripts/perf/profile.mjs, or the browser console on a phone)
   if (PERF) Object.assign(window, { __game: game, __perf: (last?: number) => game.perfStats(last) });
   game.boot().catch((e) => {
