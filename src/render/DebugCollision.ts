@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { REC_MODE } from '../core/demoFlag.ts';
 import type { Box } from '../gameplay/types.ts';
 
 /**
@@ -11,7 +12,7 @@ import type { Box } from '../gameplay/types.ts';
  */
 export const COLLISION_DEBUG = (() => {
   try {
-    return new URLSearchParams(location.search).get('debug') === 'collision';
+    return !REC_MODE && new URLSearchParams(location.search).get('debug') === 'collision';
   } catch {
     return false;
   }

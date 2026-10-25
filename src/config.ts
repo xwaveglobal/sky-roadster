@@ -289,9 +289,11 @@ export const POWERUP_DURATION = {
 
 export const WORLD_LENGTH = 1000; // metres per themed world
 
-export const DEBUG = typeof location !== 'undefined' && /[?&]debug/.test(location.search);
+import { REC_MODE } from './core/demoFlag.ts';
+/** (recording mode never shows the debug overlays) */
+export const DEBUG = !REC_MODE && typeof location !== 'undefined' && /[?&]debug/.test(location.search);
 /** v4.2.1 `?perf=1`: frame-time recorder + small on-screen readout, `window.__perf()` / `window.__game` for scripted profiling */
-export const PERF = typeof location !== 'undefined' && /[?&]perf/.test(location.search);
+export const PERF = !REC_MODE && typeof location !== 'undefined' && /[?&]perf/.test(location.search);
 export const AUTOPILOT = typeof location !== 'undefined' && /[?&]autopilot/.test(location.search);
 
 /**

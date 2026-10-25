@@ -60,7 +60,7 @@ import { BonusTunnels } from './render/BonusTunnels.ts';
 import { drawShareCard, shareImage, copyText } from './ui/ShareCard.ts';
 import { ITEM_PRICE, UNLOCK_BOOSTS, V1_ITEM_PRICE, SPECIALS, type SpecialKey } from './meta/Daily.ts';
 import { dayKey } from './core/Save.ts';
-import { DEMO_MENU, IS_NATIVE } from './core/demoFlag.ts';
+import { DEMO_MENU, IS_NATIVE, REC_MODE } from './core/demoFlag.ts';
 import { restartSpecial } from './meta/Restart.ts';
 import { platform } from './platform.ts';
 
@@ -3810,7 +3810,7 @@ export class Game {
     const avg = this.frameTimes.reduce((a, b) => a + b, 0) / this.frameTimes.length;
     this.fps = 1 / Math.max(1e-4, avg);
     this.qualityChecked += rawDt;
-    if (this.state === 'run' && this.qualityChecked > 4 && this.renderer.quality !== 'low' && this.fps < 42 && !DEBUG && !this.demo && !/[?&]noauto/.test(location.search)) {
+    if (this.state === 'run' && this.qualityChecked > 4 && this.renderer.quality !== 'low' && this.fps < 42 && !DEBUG && !this.demo && !REC_MODE && !/[?&]noauto/.test(location.search)) {
       // (an autoplay scene keeps the graphics the recorder picked — the video must not drop to LOW)
       this.qualityChecked = 0;
       this.frameTimes.length = 0;

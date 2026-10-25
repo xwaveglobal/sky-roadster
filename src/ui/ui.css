@@ -25,7 +25,9 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html, body {
-  margin: 0; height: 100%; overflow: hidden; background: var(--bg); color: var(--text);
+  margin: 0; height: 100%; height: var(--app-h, 100dvh); overflow: hidden; background: var(--bg); color: var(--text);
+  /* v5: no page scroll / rubber-band in iPhone Safari — the game is the whole page */
+  position: fixed; inset: 0; width: 100%; -webkit-text-size-adjust: 100%; -webkit-touch-callout: none;
   font-family: var(--font-body); touch-action: none; user-select: none; -webkit-user-select: none;
   overscroll-behavior: none;
 }
@@ -39,8 +41,8 @@ html, body {
     var(--bg);
 }
 #game {
-  position: relative; width: 100vw; height: 100vh; height: 100dvh; overflow: hidden;
-  background: #000;
+  position: relative; width: 100vw; height: 100vh; height: var(--app-h, 100dvh); height: 100dvh; overflow: hidden;
+  background: var(--bg); /* v5: never black bars behind the canvas */
 }
 @media (min-aspect-ratio: 3/4) {
   #game {
@@ -2735,3 +2737,13 @@ svg.xpt { width: 1.05em; height: 1.05em; flex: none; vertical-align: -0.18em; }
 #classup .cu-emblem.len2 span { font-size: 48px; letter-spacing: -2px; }
 #classup .cu-emblem.len3 span { font-size: 36px; letter-spacing: -2px; }
 @media (max-height: 680px) { #classup .cu-emblem.len2 span { font-size: 38px; } #classup .cu-emblem.len3 span { font-size: 29px; } }
+
+/* v5 iPhone Home Screen / fullscreen + clean recording mode (src/core/screenMode.ts) */
+html.standalone #game, html.rec #game { border-radius: 0; box-shadow: none; }
+@media (min-aspect-ratio: 3/4) { html.rec #game { border-radius: 0; } }
+#a2hs { position: fixed; z-index: 10000; left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom, 0px) + 12px); display: grid; grid-template-columns: 1fr 30px; gap: 2px 8px;
+  padding: 12px 12px 12px 14px; border-radius: 14px; background: rgba(8, 14, 44, .94); border: 1px solid rgba(94, 230, 255, .45); color: #fff; font: 600 13px/1.35 var(--font-body); box-shadow: 0 10px 30px rgba(0,0,0,.4); }
+#a2hs b { grid-column: 1; font: 900 14px var(--font-body); color: #5ee6ff; }
+#a2hs span { grid-column: 1; color: #dfe8ff; }
+#a2hs i { font-style: normal; font-weight: 900; color: #fff; }
+#a2hs button { grid-column: 2; grid-row: 1 / span 2; align-self: start; width: 30px; height: 30px; border-radius: 50%; border: 0; background: rgba(255,255,255,.12); color: #fff; font-size: 14px; }

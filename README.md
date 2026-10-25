@@ -269,6 +269,11 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
   - **Wall Run:** the car drives *on* the side wall (tipped about 80°, wheels on the wall), with a glowing wall panel on that side. The camera slides toward the wall.
   - **The starter car is now "XWAVE", in clean white** (the model's own paint, neutral white lights, no blue glow). **Vega took the ice-blue paint.** The car pictures were re-rendered.
   - **The rear badge is the owner's XWAVE logo:** traced polygons (`XWAVE_LOGO` in `x1Textures.ts`), crisp white, no blue halo, 1.75× bigger (`RENDER.badgeScale`).
+  - **iPhone full screen for recording:**
+    - The page fills the screen edge to edge and never scrolls.
+    - Launched from the iOS Home Screen it runs without Safari's bars, using the manifest `fullscreen` / `standalone` settings.
+    - A clean recording mode (`?rec`, always on in the `--demo` builds) hides the debug overlays and keeps the chosen graphics.
+    - iOS still shows its status bar, Dynamic Island and Home Indicator; the UI keeps clear of them.
   - **The coin is now an energy crystal** (owner's pick of 4 options): a blue faceted gem on the road, in the HUD, the Shop, the rewards and the rank board, so it never looks like real money.
   - **Faster loading:** all images re-compressed (3.6 MB → 1.3 MB). The loading art is ≤ 50 KB on the web and ≤ 45 KB on TikTok. The web page shows its loading screen at once, before the game script arrives. The XWAVE logo image files were replaced by the drawn logo.
   - **Top class reached mid-race** (Endless AAA, Mega Rush SSS, first time): the race pauses for the promotion. **Continue** drives on, and the run only ends when the player quits or crashes.

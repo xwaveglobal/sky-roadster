@@ -1,5 +1,9 @@
 import { Game } from './Game.ts';
 import { PERF } from './config.ts';
+import { setupScreen } from './core/screenMode.ts';
+
+// v5: phone screen (safe areas, standalone / fullscreen) + the clean recording mode
+setupScreen();
 
 function webglAvailable() {
   try {

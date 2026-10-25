@@ -42,6 +42,16 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 - Wall Run = the car drives on the side wall (a wall panel; `showX` → the camera).
 - Zenith → named "XWAVE", white, with neutral lights; Vega is ice blue now.
 - The rear badge is the owner's logo (traced polygons, `RENDER.badgeScale`).
+- **iPhone full screen + clean recording mode (web H5)**, `src/core/screenMode.ts`:
+  - Manifest: `display: fullscreen` plus `display_override: [fullscreen, standalone]`, with `id` and `scope`. The Apple meta tags were already there; added `format-detection`.
+  - `html` / `body` are fixed at `100dvh` (with an `--app-h` fallback for iOS < 15.4), so the page never scrolls.
+  - `#game` fills the screen with the theme background, so there are no black bars.
+  - `REC_MODE` (the `--demo` builds or `?rec`): no debug / perf / collision overlays, no automatic graphics step-down, no desktop frame.
+    - On Android, iPad or desktop, the first tap asks for real fullscreen.
+    - On iPhone Safari (no element fullscreen), a hint to Add to Home Screen appears and disappears after 9 s; ✕ hides it for good.
+  - iOS keeps its status bar, Dynamic Island and Home Indicator; the UI already keeps clear of them with `--safe-t` / `--safe-b`.
+  - Checked in Chromium with iPhone 14 Pro sizes (393 × 660 Safari tab, 393 × 852 Home Screen) and simulated 59 / 34 px insets. **Not tested on a real iPhone.**
+  - Sent as `sky-roadster-v5.0.0-autoplay-web.zip` (the multi-file `--demo` build plus Vietnamese steps; it needs HTTPS hosting for Add to Home Screen).
 - **Coin = ENERGY CRYSTAL** (owner picked option A of 4, 2026-10-25 — a round gold coin read as real money):
   - the 24 px `ICON.coin` (solid facets, no gradient ids), `coinFace` / `coinPile` (art.ts);
   - the 3D coin is a six-sided `LatheGeometry` gem, flat-shaded cyan (`PickupViews`), with a cyan glow and pickup burst, and the HUD pill border.
