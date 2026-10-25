@@ -11244,7 +11244,7 @@ uniform float uFxGhost; uniform vec3 uFxGhostColor; uniform float uFxSweep; unif
             let e = sc.e, side2 = p.x >= 0 ? 1 : -1;
             if (sc.kind === "wall") {
                 let W3 = SHOWCASE.wall;
-                this.root.position.x = lerp2(p.x, side2 * W3.x, e), this.root.position.y = lerp2(vy, W3.y, e), scRoll = -side2 * W3.roll * e;
+                this.root.position.x = lerp2(p.x, side2 * W3.x, e), this.root.position.y = lerp2(vy, W3.y, e), scRoll = side2 * W3.roll * e;
             }
             else if (sc.kind === "rail")
                 this.root.position.y += 2.3 * e + Math.sin(this.time * 2.4) * .15 * e;

@@ -1507,7 +1507,8 @@ export class Vehicle {
         const W = SHOWCASE.wall;
         this.root.position.x = lerp(p.x, side * W.x, e);
         this.root.position.y = lerp(vy, W.y, e);
-        scRoll = -side * W.roll * e;
+        // +side roll: the wheels (the car's underside) face the wall, the roof faces the road
+        scRoll = side * W.roll * e;
       } else if (sc.kind === 'rail') {
         this.root.position.y += 2.3 * e + Math.sin(this.time * 2.4) * 0.15 * e;
       } else if (sc.kind === 'tunnel') {
