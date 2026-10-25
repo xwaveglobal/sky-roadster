@@ -42,6 +42,7 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 - Wall Run = the car drives on the side wall (a wall panel; `showX` → the camera).
 - Zenith → named "XWAVE", white, with neutral lights; Vega is ice blue now.
 - The rear badge is the owner's logo (traced polygons, `RENDER.badgeScale`).
+- Native autoplay build (`build-tiktok --demo`) = recording mode too: no debug, no automatic LOW, and the hidden test info never opens. `game.json` is portrait with `showStatusBar: false`; TikTok's own menu capsule stays.
 - **iPhone full screen + clean recording mode (web H5)**, `src/core/screenMode.ts`:
   - Manifest: `display: fullscreen` plus `display_override: [fullscreen, standalone]`, with `id` and `scope`. The Apple meta tags were already there; added `format-detection`.
   - `html` / `body` are fixed at `100dvh` (with an `--app-h` fallback for iOS < 15.4), so the page never scrolls.

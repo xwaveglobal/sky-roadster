@@ -18,7 +18,7 @@ import { calendarGift, coinPile, giftBox, megaphone, shareNodes, starBig, wifiRo
 import type { RunRewards } from '../../ui/UI.ts';
 import { hs } from '../hs.ts';
 import { askText } from '../text.ts';
-import { DEMO_MENU } from '../../core/demoFlag.ts';
+import { DEMO_MENU, REC_MODE } from '../../core/demoFlag.ts';
 
 type Close = 'modal' | 'ov' | 'none';
 interface ModalOpts {
@@ -681,7 +681,7 @@ function settingsOv(ui: UI, g: Gfx) {
     // hidden test info: tap the version 5 times (colour calibration, GPU, audio)
     g.hit(x + w / 2 - 60, y - 6, 120, 24, 's-ver', () => {
       ui.verTaps = (ui.verTaps ?? 0) + 1;
-      if (ui.verTaps >= 5) ui.showDiag = !ui.showDiag;
+      if (ui.verTaps >= 5 && !REC_MODE) ui.showDiag = !ui.showDiag; // (the recording build never opens the test info)
     });
     y += 16;
     if (ui.showDiag && ui.colorCtl) y += g.para(ui.colorCtl.line(), x, y, w, { size: 8.5, font: 'b', color: C.muted, align: 'center', noTr: true });
