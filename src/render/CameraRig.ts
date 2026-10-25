@@ -94,6 +94,10 @@ export class CameraRig {
     this.update(1, null, 0, 0, true);
   }
 
+  /** v5: extra visual height of the car (Vehicle.showLift) during a showcase special */
+  showLift = 0;
+  /** v5: sideways offset of the car (Vehicle.showX) during Wall Run */
+  showX = 0;
   update(dt: number, p: Player | null, speedFactor: number, turbo: number, snap = false) {
     this.time += dt;
     const t = this.time;
@@ -174,6 +178,12 @@ export class CameraRig {
         const fx = dyn ? px : 0; // fixed view: never follows the lane
         wantPos.set(fx * C.followX + sway, C.height + (dyn ? 0 : F.height) + base * C.lift + extra * 0.95 + sk * 0.9, back - sk * 0.8);
         wantLook.set(fx * C.lookX, C.lookY + (dyn ? 0 : F.lookY) + base * C.lookLift + extra * 0.8, C.lookZ);
+        // v5: Tunnel Rider on the roof / Sky Rail — rise and look up with the car so it stays framed
+        wantPos.y += this.showLift * 0.5;
+        wantLook.y += this.showLift * 0.92;
+        // v5 Wall Run: slide toward the wall so the car on it stays framed
+        wantPos.x += this.showX * 0.62;
+        wantLook.x += this.showX * 0.55;
         fov = this.baseFov + C.fov + speedFactor * (C.fovSpeed ?? 7) + turbo * (C.fovTurbo ?? 9) + this.fovKick;
         break;
       }

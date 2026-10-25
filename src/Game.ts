@@ -1864,7 +1864,8 @@ export class Game {
     } else if (k === 'escape') {
       this.useEscape();
     } else if (k === 'ghost' || k === 'wall' || k === 'rail' || k === 'tunnel') {
-      this.startShowcase(k, (sp.to - w.dist) / Math.max(1, w.speed) + 0.5);
+      // Tunnel Rider: back on the road just before the tunnel's exit (the roll down happens inside it)
+      this.startShowcase(k, (sp.to - w.dist) / Math.max(1, w.speed) + (k === 'tunnel' ? -0.15 : 0.5));
     }
     this.run.invulnT = Math.max(this.run.invulnT, (sp.to - w.dist) / Math.max(1, w.speed) + 0.6);
   }
@@ -1974,6 +1975,7 @@ export class Game {
   }
 
   startRun() {
+    this.midTop = null;
     this.returnTo = null;
     this.runStartT = this.time;
     this.audio.unlock();
@@ -2100,6 +2102,7 @@ export class Game {
 
   resume() {
     if (this.state !== 'paused') return;
+    if (this.midTop && this.ui.isShown('classup')) return; // the top-class promotion's Continue resumes
     this.audio.play('click');
     this.clock.getDelta(); // new frame-time baseline: the paused time is never applied as one big step
     this.state = 'run';
@@ -2590,7 +2593,10 @@ export class Game {
     if (this.autopilot && this.state === 'run') this.autopilot.update(w, dt, (a) => p.input(a));
     if (this.demo && this.state === 'run') this.demoUpdate(dt);
     // v5 video build: Settings → Autoplay ON — every race drives itself (the scenes above have their own driving)
-    else if (this.autoplayOn && this.state === 'run' && !this.tutorialMode && !this.superFlight && !p.isAirDash) this.demoPilot.update(w, dt, (a) => p.input(a));
+    if (this.state === 'run') this.checkTopClass();
+    if (this.demo) {
+      /* the scene drives */
+    } else if (this.autoplayOn && this.state === 'run' && !this.tutorialMode && !this.superFlight && !p.isAirDash) this.demoPilot.update(w, dt, (a) => p.input(a));
 
     // ---- fixed sub-steps for precise collision at high speed
     const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
@@ -3068,7 +3074,42 @@ export class Game {
     const rw = CLASS_REWARD[c as 'C' | 'B' | 'A'];
     this.ui.classUp({ cls: c, color: CLASS_COLOR[c], sub: sub[c] ?? '', car: carId ? { id: carId, name: SKINS.find((k) => k.id === carId)!.name } : null, reward: rw ?? null });
   }
+  /**
+   * v5 (owner 2026-10-25): the TOP class of the road (Endless AAA, Mega Rush SSS) reached for the first time —
+   * the race pauses for the promotion; Continue drives on (the run never stops by itself — the player quits)
+   */
+  private midTop: RankClass | null = null;
+  private checkTopClass() {
+    const r = this.run;
+    if (!r || this.course || this.tutorialMode || this.midTop || r.expRate <= 0) return;
+    const top = CLASSES[VARIANTS[this.variant].top];
+    if (CLASSES.indexOf(classFor(r.exp)) < CLASSES.indexOf(top)) return;
+    if ((this.save.classCelebrated ?? []).includes(top) || this.classQueue.includes(top)) return;
+    this.midTop = top;
+    this.setState('paused');
+    this.input.enabled = false;
+    this.classQueue.unshift(top);
+    const carId = SKINS.find((k) => !k.future && k.need === top && this.save.unlocked.includes(k.id))?.id ?? null;
+    const sub: Record<string, string> = { AAA: 'The highest Endless class — Mega Rush is open! The road goes on: keep racing as long as you like.', SSS: 'The very top of Sky Roadster! The road goes on: keep racing as long as you like.' };
+    this.audio.play('fanfare');
+    this.vibrate([30, 40, 60]);
+    this.ui.classUp({ cls: top, color: CLASS_COLOR[top], sub: sub[top] ?? 'Keep racing!', car: carId ? { id: carId, name: SKINS.find((k) => k.id === carId)!.name } : null, reward: null });
+  }
   private classOk() {
+    if (this.midTop && this.state === 'paused') {
+      // the in-race top-class promotion: mark it seen and drive on
+      const c = this.classQueue.shift();
+      const list = (this.save.classCelebrated ??= []);
+      if (c && !list.includes(c)) list.push(c);
+      this.persist();
+      this.audio.play('click');
+      this.ui.hideOverlay('classup');
+      this.clock.getDelta();
+      this.state = 'run';
+      this.input.enabled = true;
+      this.ui.show('hud');
+      return;
+    }
     const c = this.classQueue.shift();
     if (c) {
       const list = (this.save.classCelebrated ??= []);
@@ -3457,6 +3498,8 @@ export class Game {
     this.renderer.setBloom(rp.bloom * COMFORT.bloomMul); // constant: boosts never brighten the screen
 
     if (this.state !== 'dying' && this.state !== 'gameover') this.updateTrails(dt, w.speed, turbo);
+    this.rig.showLift = this.state === 'run' || this.state === 'respawn' ? this.vehicle.showLift : 0;
+    this.rig.showX = this.state === 'run' || this.state === 'respawn' ? this.vehicle.showX : 0;
     if (this.state !== 'countdown') this.rig.update(dt, p, speedFactor, turbo); // countdown steps the rig itself
   }
 
@@ -3920,15 +3963,8 @@ export class Game {
         this.demoFastForward();
         return;
       }
-      if (d.phase === 2 && run.exp >= CLASS_MIN.AAA) {
-        d.phase = 3;
-        d.t = 0;
-        this.ui.toast(`${ICON.trophy} <b>RANK AAA REACHED!</b>`, CLASS_COLOR.AAA);
-      }
-      if (d.phase === 3 && d.t > 2.2) {
-        d.phase = 4;
-        this.gameOver(); // the weekly board + the first-time AAA promotion
-      }
+      // reaching AAA: the in-race promotion (checkTopClass) — Continue keeps the race going
+      if (d.phase === 2 && run.exp >= CLASS_MIN.AAA) d.phase = 3;
       return;
     }
     // special: drive, then put the chosen item on its own stage
@@ -3955,7 +3991,7 @@ export class Game {
     for (let k = 4; k >= 1; k--) sp.pickups.push({ kind: 'coin', lane, dist: at - k * 5, y: HEIGHT.NORMAL });
     sp.pickups.push({ kind: kind as PickupKind, lane, dist: at, y: HEIGHT.NORMAL });
     // Tunnel Rider needs its tunnel: the Bonus road's tunnel scenery, built right after the pickup
-    if (kind === 'tunnel') this.bonusTunnels.set([{ from: at + BONUS_SET.lead, to: at + BONUS_SET.lead + BONUS_SET.tunnelLen * 0.6 }], 'sea');
+    if (kind === 'tunnel') this.bonusTunnels.set([{ from: at + BONUS_SET.lead, to: at + BONUS_SET.lead + BONUS_SET.tunnelLen }], 'sea');
     this.demoEndAt = at + 260;
     this.demo!.phase = 2;
   }
@@ -3966,7 +4002,7 @@ export class Game {
     d.fired = true;
     const w = this.world;
     const from = w.dist + BONUS_SET.lead;
-    const len = k === 'tunnel' ? BONUS_SET.tunnelLen * 0.6 : (BONUS_SET.len[k] ?? 40);
+    const len = k === 'tunnel' ? BONUS_SET.tunnelLen : (BONUS_SET.len[k] ?? 40);
     const piece = { kind: k, pick: w.dist, from, to: from + len, filled: true };
     w.injectRows(w.spawner.buildSetPiece(piece));
     if (k === 'escape') this.run.escapes = Math.max(1, this.run.escapes);

@@ -181,6 +181,22 @@ export class MeshCar {
       badge.transparent = true;
       badge.alphaTest = 0.05;
       badge.emissiveIntensity = RENDER.badgeGlow;
+      // v5 (owner): a bigger, clearer XWAVE logo on the tail (the badge quad grows around its own centre)
+      model.traverse((o) => {
+        const me = o as THREE.Mesh;
+        if (!me.isMesh || (me.material as THREE.Material).name !== 'X1_Badge') return;
+        const geo = me.geometry.clone();
+        geo.computeBoundingBox();
+        const c = new THREE.Vector3();
+        geo.boundingBox!.getCenter(c);
+        geo.translate(-c.x, -c.y, -c.z);
+        geo.scale(RENDER.badgeScale, RENDER.badgeScale, 1);
+        geo.translate(c.x, c.y, c.z);
+        me.geometry = geo;
+      });
+      // v5 (owner): pure white logo — no blue tint from the model's badge colours
+      badge.color.setHex(0xffffff);
+      badge.emissive.setHex(0xffffff);
     }
     const carbon = this.mats.get('X1_Carbon');
     if (carbon) carbon.map = tex(x1CarbonCanvas());

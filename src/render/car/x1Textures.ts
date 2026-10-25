@@ -14,21 +14,38 @@ function canvas(w: number, h: number): [Canvas, CanvasRenderingContext2D] {
   return [c, c.getContext('2d')!];
 }
 
-/** glowing XWAVE wordmark on a transparent background (the rear badge, 4:1) */
+/**
+ * The XWAVE logo (owner artwork, 2026-10-25) as polygons in a 1000 × 120 box — traced from the
+ * owner's PNG so it draws crisp at any size with plain canvas paths (works in the native runtime too).
+ * Shapes separated by ';', points "x,y" separated by spaces.
+ */
+export const XWAVE_LOGO = { w: 1000, h: 120, d: '807,119 968,119 974,118 983,112 992,103 997,93 835,94 828,96 821,101 813,109;92,82 83,73 75,68 64,67 60,68 51,74 0,119 48,119 52,118 60,113;556,106 557,109 613,109 615,108 614,104 591,65 587,61 585,61 583,63;832,73 945,73 952,71 961,66 969,57 974,47 859,47 853,49 844,55 838,61;857,26 971,26 982,22 990,16 995,10 1000,1 883,1 871,6 862,16;651,1 716,108 724,115 732,118 741,120 748,120 756,119 763,115 774,106 839,1 812,1 805,4 794,21 755,84 751,88 747,90 741,90 734,84 688,9 684,4 678,1;97,53 96,56 99,62 160,117 164,119 212,119 158,70 150,67 136,66 131,63 129,57 130,52 134,47 137,46 151,45 158,41 199,1 155,1 151,3;7,1 52,41 62,46 73,46 78,44 94,30 68,7 59,1;490,119 515,119 519,118 524,115 576,35 580,31 585,29 592,31 597,35 639,106 647,117 654,119 679,119 614,13 608,7 600,2 593,0 583,0 576,1 567,5 557,14;213,1 264,104 271,112 276,115 283,119 291,120 299,120 307,117 314,112 320,107 325,99 354,36 358,31 362,30 368,30 374,36 404,101 413,112 423,118 433,120 444,119 453,115 463,106 468,99 519,1 494,1 490,2 485,7 446,83 442,88 437,90 432,90 426,84 397,22 392,13 385,7 374,1 368,0 354,1 343,8 334,16 302,84 298,89 291,90 287,88 284,84 245,6 241,2 237,1' };
+
+/** draw the XWAVE logo, `w` wide, top-left at (x, y) */
+export function drawXwaveLogo(g: CanvasRenderingContext2D, x: number, y: number, w: number, fill = '#ffffff') {
+  const k = w / XWAVE_LOGO.w;
+  g.fillStyle = fill;
+  for (const shape of XWAVE_LOGO.d.split(';')) {
+    g.beginPath();
+    shape.split(' ').forEach((pt, i) => {
+      const [px, py] = pt.split(',');
+      const X = x + Number(px) * k,
+        Y = y + Number(py) * k;
+      if (i === 0) g.moveTo(X, Y);
+      else g.lineTo(X, Y);
+    });
+    g.closePath();
+    g.fill();
+  }
+}
+
+/** the rear badge (4:1, transparent): the XWAVE logo in clean white — no blue halo (owner 2026-10-25) */
 export function x1BadgeCanvas(): Canvas {
-  const [c, g] = canvas(512, 128);
-  g.clearRect(0, 0, 512, 128);
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.font = 'italic 900 84px "Arial Black", "Helvetica Neue", Arial, sans-serif';
-  // soft blue halo, then the near-white letters (the master shows white letters with a blue glow)
-  g.shadowColor = 'rgba(80,170,255,0.95)';
-  g.shadowBlur = 18;
-  g.fillStyle = '#9fd4ff';
-  g.fillText('XWAVE', 256, 68);
-  g.shadowBlur = 0;
-  g.fillStyle = '#f4faff';
-  g.fillText('XWAVE', 256, 68);
+  const [c, g] = canvas(1024, 256);
+  g.clearRect(0, 0, 1024, 256);
+  const w = 980;
+  const h = (w * XWAVE_LOGO.h) / XWAVE_LOGO.w;
+  drawXwaveLogo(g, (1024 - w) / 2, (256 - h) / 2 + 6, w, '#ffffff');
   return c;
 }
 

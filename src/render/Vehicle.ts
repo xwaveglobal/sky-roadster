@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { Spring, clamp, clamp01, lerp } from '../core/math.ts';
-import { CAR_HALF, HEIGHT, RENDER, TYRE } from '../config.ts';
+import { CAR_HALF, HEIGHT, RENDER, SHOWCASE, TYRE } from '../config.ts';
 import { MeshCar } from './car/MeshCar.ts';
 import { carHeight, isAirborne } from './car/carMotion.ts';
 import { CrashFx } from './car/CarFx.ts';
@@ -88,9 +88,10 @@ export interface VehicleSkin {
  * Cars a player already owns are never taken away (unlocks only ever add).
  */
 export const SKINS: VehicleSkin[] = [
-  { id: 'zenith', name: 'XWAVE Zenith', shape: 'gt', cls: 'Common · Balanced for every run', rarity: 'Common', need: 'D', price: 0, bonus: 0, tintAmt: 1,
-    // v4.6.1: ice-blue paint (owner choice) so Zenith no longer looks like Vega's white
-    body: 0x7cc0ec, trim: 0x9fb6cc, glass: 0x0a0d16, glow: 0x39b6ff, accent: 0x1c64ff, stats: [7, 7, 8, 7],
+  // v5 (owner 2026-10-25): the starter car is called just "XWAVE" and is the clean white one (the model's own
+  // paint, neutral white lights — no blue glow around it); Vega took the ice-blue paint
+  { id: 'zenith', name: 'XWAVE', shape: 'gt', cls: 'Common · Balanced for every run', rarity: 'Common', need: 'D', price: 0, bonus: 0, tintAmt: 0,
+    body: 0xf3f5fa, trim: 0xb9c2d3, glass: 0x0a0d16, glow: 0xf2f5ff, accent: 0xe6ecf8, stats: [7, 7, 8, 7],
     skills: [{ name: 'Turbo Boost', desc: 'Short burst of high speed.' }, { name: 'Stable Flight', desc: 'Easier to control.' }] },
   { id: 'inferno', name: 'XWAVE Inferno', shape: 'gt', cls: 'Rare · Burn through everything', rarity: 'Rare', need: 'AA', price: 0, bonus: 0, tintAmt: 0.92,
     body: 0xc4121f, trim: 0x1a1a1a, glass: 0x0a0202, glow: 0xff3b2a, accent: 0xff6a2a, stats: [10, 9, 8, 8],
@@ -98,8 +99,8 @@ export const SKINS: VehicleSkin[] = [
   { id: 'nexus', name: 'XWAVE Nexus', shape: 'gt', cls: 'Epic · The next evolution', rarity: 'Epic', need: 'AAA', price: 0, bonus: 0, tintAmt: 0.35,
     body: 0xdfe8ff, trim: 0xc9d2e6, glass: 0x0b1830, glow: 0x3cf2ff, accent: 0xd04dff, stats: [10, 10, 10, 10],
     skills: [{ name: 'Gravity Control', desc: 'Switches flight height freely for 5 seconds.' }, { name: 'Dimension Dash', desc: 'Teleports forward a short distance.' }] },
-  { id: 'vega', name: 'XWAVE Vega', shape: 'gt', cls: 'Legendary · Red-line racer', rarity: 'Legendary', need: 'S', price: 0, bonus: 0, tintAmt: 0, rear: vegaBack,
-    body: 0xf3f5fa, trim: 0xb9c2d3, glass: 0x0a0d16, glow: 0xff3b4e, accent: 0xff3b4e, stats: [8, 7, 8, 7] },
+  { id: 'vega', name: 'XWAVE Vega', shape: 'gt', cls: 'Legendary · Red-line racer', rarity: 'Legendary', need: 'S', price: 0, bonus: 0, tintAmt: 1, rear: vegaBack,
+    body: 0x7cc0ec, trim: 0xb9c2d3, glass: 0x0a0d16, glow: 0xff3b4e, accent: 0xff3b4e, stats: [8, 7, 8, 7] },
   { id: 'volt', name: 'XWAVE Volt', shape: 'gt', cls: 'Mythic · Speed beyond limits', rarity: 'Mythic', need: 'SS', price: 0, bonus: 0, tintAmt: 0.92,
     body: 0x6a3cf0, trim: 0x9aa6bd, glass: 0x05060a, glow: 0xb46bff, accent: 0x8a4dff, stats: [9, 9, 8, 8],
     skills: [{ name: 'Ion Burst', desc: 'Massive speed boost for 5 seconds.' }, { name: 'Shockwave', desc: 'Pushes nearby obstacles out of the way.' }] },
@@ -1338,6 +1339,50 @@ export class Vehicle {
   /** Snap animation springs (after respawn / menu). */
   /** v2 Bonus showcase special in effect (null = none); e = 0..1 envelope */
   showcase: { kind: 'ghost' | 'wall' | 'rail' | 'tunnel'; e: number } | null = null;
+  /** v5: how far a showcase (Tunnel Rider roof, Sky Rail) lifts the car above its gameplay height — the camera follows */
+  showLift = 0;
+  /** v5: the car's x while it drives on the side wall (0 otherwise) — the camera follows */
+  showX = 0;
+  /** v5 Wall Run: a tall glowing wall panel on the run side, so the car visibly drives on a wall */
+  private wallFx: THREE.Mesh | null = null;
+  private updateWallFx(e: number, side: number, move: number) {
+    if (e <= 0.001) {
+      if (this.wallFx) this.wallFx.visible = false;
+      return;
+    }
+    const W = SHOWCASE.wall;
+    if (!this.wallFx) {
+      const c = document.createElement('canvas');
+      c.width = 256;
+      c.height = 64;
+      const g = c.getContext('2d')!;
+      const gr = g.createLinearGradient(0, 0, 0, 64);
+      gr.addColorStop(0, 'rgba(120,220,255,0)');
+      gr.addColorStop(0.18, 'rgba(120,220,255,0.55)');
+      gr.addColorStop(0.5, 'rgba(40,90,170,0.35)');
+      gr.addColorStop(0.82, 'rgba(120,220,255,0.55)');
+      gr.addColorStop(1, 'rgba(120,220,255,0)');
+      g.fillStyle = gr;
+      g.fillRect(0, 0, 256, 64);
+      g.fillStyle = 'rgba(200,245,255,0.55)';
+      for (let x = 0; x < 256; x += 32) g.fillRect(x, 6, 3, 52);
+      const t = new THREE.CanvasTexture(c);
+      t.wrapS = THREE.RepeatWrapping;
+      t.repeat.set(W.len / 8, 1);
+      const m = new THREE.MeshBasicMaterial({ map: t, transparent: true, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+      this.wallFx = new THREE.Mesh(new THREE.PlaneGeometry(W.len, W.h), m);
+      this.root.add(this.wallFx);
+    }
+    const f = this.wallFx;
+    f.visible = true;
+    f.rotation.set(0, (Math.PI / 2) * -side, 0);
+    // world-fixed in x / y (the root moves with the car): the wall face sits just behind the wheels
+    f.position.set(side * (W.x + 0.06) - this.root.position.x, W.h / 2 - this.root.position.y, -W.len * 0.32);
+    (f.material as THREE.MeshBasicMaterial).opacity = e;
+    // the stripes run past with the road (one texture tile = 8 m)
+    const tx = (f.material as THREE.MeshBasicMaterial).map!;
+    tx.offset.x = (tx.offset.x + (side > 0 ? 1 : -1) * (move / 8)) % 1;
+  }
   private ghostHid = false;
 
   /**
@@ -1457,16 +1502,32 @@ export class Vehicle {
       const e = sc.e;
       const side = p.x >= 0 ? 1 : -1;
       if (sc.kind === 'wall') {
-        this.root.position.x = lerp(p.x, side * 3.1, e);
-        this.root.position.y += 0.75 * e;
-        scRoll = -side * 0.85 * e;
+        // v5 (owner): the car really drives ON the side wall — wheels against it, body tipped ~80°
+        // (the roll pivots on the wheels' contact line, so the tyres stay on the wall surface)
+        const W = SHOWCASE.wall;
+        this.root.position.x = lerp(p.x, side * W.x, e);
+        this.root.position.y = lerp(vy, W.y, e);
+        scRoll = -side * W.roll * e;
       } else if (sc.kind === 'rail') {
         this.root.position.y += 2.3 * e + Math.sin(this.time * 2.4) * 0.15 * e;
       } else if (sc.kind === 'tunnel') {
-        this.root.position.y += 1.9 * e;
-        scRoll = Math.PI * e;
+        // v5 (owner): roll up onto the tunnel ROOF and hug it — wheels on the vault, upside down at the
+        // crown, in the car's own lane (the vault's tilt there); the obstacles pass far below
+        const T = SHOWCASE.tunnel;
+        const th = Math.asin(clamp(p.x / T.r, -0.5, 0.5));
+        const cx = T.r * Math.sin(th),
+          cy = T.cy + T.r * Math.cos(th);
+        // a little sideways swing on the way up so it reads as a roll onto the vault, not a lift
+        const swing = Math.sin(Math.PI * e) * (1 - e) * side * 1.6;
+        this.root.position.x = lerp(p.x, cx, e) + swing;
+        this.root.position.y = lerp(vy, cy, e);
+        // roll toward the side the car climbs: right → +(π − θ), left → −(π + θ) (the same upside-down pose)
+        scRoll = (side >= 0 ? Math.PI - th : -(Math.PI + th)) * e;
       }
     }
+    this.showX = sc && sc.e > 0 && sc.kind === 'wall' ? this.root.position.x * sc.e : 0;
+    this.showLift = sc && sc.e > 0 && (sc.kind === 'tunnel' || sc.kind === 'rail') ? Math.max(0, this.root.position.y - vy) : 0;
+    this.updateWallFx(sc && sc.kind === 'wall' ? sc.e : 0, p.x >= 0 ? 1 : -1, speed * dt);
 
     // ---- bank / yaw from lateral velocity (springs give natural overshoot on recovery)
     const laneSpeed = 2.6 / 0.19;

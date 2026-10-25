@@ -264,6 +264,12 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
     - Video-recording build: `node scripts/build-esbuild.mjs --single --demo` — one HTML file with Settings → Autoplay always shown (works from `file://`).
     - Settings → **Autoplay** switch (video builds only): ON = every race drives itself and cannot crash out, so any scene can be recorded. Once it is on, nothing is saved for the rest of that session.
     - TikTok test build of the same: `node scripts/build-tiktok.mjs --demo` → `npm run pack:tiktok`. The native Settings → Autoplay starts the scene in place (no reload), and Home ends it; nothing is saved for the rest of that session. During a scene the graphics never step down by themselves. **Never the release zip**: rebuild without `--demo` before packing a release.
+- **Owner list (2026-10-25, afternoon):**
+  - **Tunnel Rider:** the car rolls up onto the tunnel roof and drives on it upside down, in its own lane, while the traffic passes far below. The camera rises with it. It comes back down just before the tunnel exit. Poses are in `SHOWCASE` (`config.ts`).
+  - **Wall Run:** the car drives *on* the side wall (tipped about 80°, wheels on the wall), with a glowing wall panel on that side. The camera slides toward the wall.
+  - **The starter car is now "XWAVE", in clean white** (the model's own paint, neutral white lights, no blue glow). **Vega took the ice-blue paint.** The car pictures were re-rendered.
+  - **The rear badge is the owner's XWAVE logo:** traced polygons (`XWAVE_LOGO` in `x1Textures.ts`), crisp white, no blue halo, 1.75× bigger (`RENDER.badgeScale`).
+  - **Top class reached mid-race** (Endless AAA, Mega Rush SSS, first time): the race pauses for the promotion. **Continue** drives on, and the run only ends when the player quits or crashes.
 - **Checks:**
   - `npm run check:tiktok`: 0 fail, 0 warn.
   - `scripts/qa/native.mjs`: 26 / 26 in TikTok mode and 26 / 26 in Android mode (HS fake-phone preview, real taps; rerun 2026-10-25). Screens are in `docs/native-v5/`.

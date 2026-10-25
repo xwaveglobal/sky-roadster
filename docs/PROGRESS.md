@@ -37,6 +37,13 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
   - `scripts/qa/layout.mjs` (web layout sweep at 375 × 640; garage / profile strips scroll on purpose);
   - `scripts/qa/native.mjs` updated (no "no thanks" button any more).
 
+**Afternoon (owner)**:
+- Tunnel Rider = the car drives on the tunnel roof. `Vehicle` showcase pose on the `BonusTunnels` vault, with `Vehicle.showLift` → `CameraRig.showLift`.
+- Wall Run = the car drives on the side wall (a wall panel; `showX` → the camera).
+- Zenith → named "XWAVE", white, with neutral lights; Vega is ice blue now.
+- The rear badge is the owner's logo (traced polygons, `RENDER.badgeScale`).
+- Top-class promotion inside the race (`Game.checkTopClass`): Continue keeps the race going. The Road to AAA demo uses it instead of ending the run.
+
 **Checks**: typecheck OK; `npm test` all green; hs-check 0 fail / 0 warn; native QA 26 / 26 (TikTok) + 26 / 26 (Android).
 
 **Open / interpretations**:

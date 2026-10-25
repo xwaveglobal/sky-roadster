@@ -340,7 +340,9 @@ export const RENDER = {
   /** emissive strength of the rear LED / markers / badge in game (bloom picks up values above 1) */
   ledGlow: 3.6,
   markerGlow: 2.6,
-  badgeGlow: 1.4,
+  /** v5: the rear XWAVE badge drawn this much bigger than in the model */
+  badgeScale: 1.75,
+  badgeGlow: 1.0, // v5: crisp white XWAVE logo — at 1.0 it reads pure white without a bloom halo
   /** headlight LED emissive strength (slim signature, no blooming blob) */
   headGlow: 1.4,
   /** nitro flame length (m) at full boost */
@@ -538,4 +540,16 @@ export const ROAD = {
   /** polished tyre tracks: offset from each lane centre */
   trackX: 0.78,
   trackW: 0.42,
+};
+
+/**
+ * v5 (owner 2026-10-25) showcase poses of the Bonus specials (visual only — gameplay is invulnerable then).
+ *  tunnel: the car rolls onto the tunnel vault (BonusTunnels: radius 9.5, centre 0.4 below the road) and
+ *          drives on it, wheels on the roof. r = radius of the wheel contact (below the crown light strip).
+ *  wall:   the car drives on the side wall: wheels at x, roll in rad (π/2 = fully sideways), contact height y;
+ *          a glowing wall panel h tall / len long is shown on that side.
+ */
+export const SHOWCASE = {
+  tunnel: { r: 8.75, cy: -0.4 },
+  wall: { x: 4.4, y: 1.05, roll: 1.42, h: 3.4, len: 60 },
 };

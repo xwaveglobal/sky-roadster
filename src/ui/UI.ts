@@ -2329,7 +2329,7 @@ export class UI {
     const car = (id: string, n: string) => `<span class="ul"><img src="${CAR_IMG[id]}" alt="" />${n}</span>`;
     const road = (n: string) => `<span class="ul">${ICON.flag}${n}</span>`;
     const UNL: Record<RankClass, string> = {
-      D: car('zenith', 'Zenith'),
+      D: car('zenith', 'XWAVE'),
       C: car('vega', 'Vega'),
       B: car('volt', 'Volt'),
       A: car('phantom', 'Phantom'),

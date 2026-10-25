@@ -1091,7 +1091,7 @@ function spconfirmOv(ui: UI, g: Gfx) {
 function rankguideOv(ui: UI, g: Gfx) {
   modal(ui, g, 'rankguide', { title: '& RANK', icon: BOLT }, (x, y, w) => {
     const UNL: Record<RankClass, [string, string][]> = {
-      D: [['car:zenith', 'Zenith']], C: [['car:vega', 'Vega']], B: [['car:volt', 'Volt']], A: [['car:phantom', 'Phantom']], AA: [['car:inferno', 'Inferno']],
+      D: [['car:zenith', 'XWAVE']], C: [['car:vega', 'Vega']], B: [['car:volt', 'Volt']], A: [['car:phantom', 'Phantom']], AA: [['car:inferno', 'Inferno']],
       AAA: [['car:nexus', 'Nexus'], ['flag', 'Mega Rush'], ['rocket', 'AAA specials']],
       S: [['flag', 'Ocean Drive']], SS: [['flag', 'Volcano Run']], SSS: [['flag', 'Aurora Peak']],
     };
