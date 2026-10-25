@@ -6,6 +6,7 @@
  * best score is ranked against them. Replace `sampleBoard()` with a fetch to your
  * leaderboard service to go live — the UI only needs `Board`.
  */
+import { RANKING } from '../config.ts';
 
 export interface LbRow {
   rank: number;
@@ -127,11 +128,28 @@ export function allTimeBoard(you: { name: string; score: number; color: string; 
   return rankBoard(sampleBoard('xwave-all-time-v2', curve), curve, you);
 }
 
+/**
+ * v5 (owner "cách 1"): a rival's weekly score is — like the player's — the average EXP of its last
+ * RANKING.lastRuns races. Each rival "races" every BOT_RACE_HOURS; every race is its skill × a random
+ * form (0.7 … 1.3, deterministic per week / rival / race), so the averages, and the ranks, move up and
+ * down through the week. Pure + deterministic: every client sees the same field at the same time.
+ */
+export const BOT_RACE_HOURS = 1.5;
+export function botForm(seedKey: string, name: string, slot: number, n = RANKING.lastRuns) {
+  let sum = 0;
+  for (let j = slot - n + 1; j <= slot; j++) sum += 0.7 + 0.6 * rng(hashStr(`${seedKey}|${name}|${j}`))();
+  return sum / n;
+}
 export function weeklyBoard(week: string, you: { name: string; score: number; color: string; pass?: boolean; av?: number; flag?: string }, now = new Date()): Board {
-  // rivals keep playing through the week: scores and field size grow over time
+  // rivals keep playing through the week: the field grows over time
   const f = 0.35 + 0.65 * Math.min(1, weekProgress(now) * 1.4);
   const curve: Curve = { top: 47000 * f, k: 1.05, total: Math.round(9000 + 31000 * f) };
-  return rankBoard(sampleBoard(`xwave-exp-week-${week}`, curve), curve, you);
+  const key = `xwave-exp-week-${week}`;
+  const slot = Math.floor((weekProgress(now) * 7 * 24) / BOT_RACE_HOURS);
+  const field = sampleBoard(key, curve)
+    .map((r) => ({ ...r, score: Math.round(r.score * botForm(key, r.name, slot)) }))
+    .sort((a, b) => b.score - a.score);
+  return rankBoard(field, curve, you);
 }
 
 /**
@@ -139,16 +157,16 @@ export function weeklyBoard(week: string, you: { name: string; score: number; co
  * are the board's own rows; further down, neighbours are filled in with demo rivals just above / below
  * the player's EXP (the rival field is demo data until online ranking goes live).
  */
-export function aroundYou(board: Board, k = 2): LbRow[] {
+export function aroundYou(board: Board, k = 2, below = k): LbRow[] {
   const y = board.you;
   const i = board.rows.findIndex((r) => r.you);
   if (i >= 0) {
-    const a = Math.max(0, Math.min(i - k, board.rows.length - (2 * k + 1)));
-    return board.rows.slice(a, a + 2 * k + 1);
+    const a = Math.max(0, Math.min(i - k, board.rows.length - (k + below + 1)));
+    return board.rows.slice(a, a + k + below + 1);
   }
   const r = rng(hashStr(`around-${y.rank}`));
   const out: LbRow[] = [];
-  for (let d = -k; d <= k; d++) {
+  for (let d = -k; d <= below; d++) {
     if (d === 0) {
       out.push(y);
       continue;

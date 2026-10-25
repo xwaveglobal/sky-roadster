@@ -102,16 +102,22 @@ const check = (ok: boolean, msg: string) => {
   check(nextGraphics('low') === 'medium' && nextGraphics('medium') === 'high' && nextGraphics('high') === 'low', 'settings cycle LOW → MEDIUM → HIGH → LOW');
 }
 
-// ---- saves: new players start on MEDIUM; the old default HIGH becomes MEDIUM once, LOW stays LOW
+// ---- saves (v5): new players start on HIGH; an old save on HIGH / MEDIUM is HIGH once, LOW stays LOW; camera OFF
 {
   const store: Record<string, string> = {};
   globalThis.localStorage = { getItem: (k: string) => store[k] ?? null, setItem: (k: string, v: string) => (store[k] = v), removeItem: (k: string) => delete store[k] };
   const { loadSave } = await import('../src/core/Save.ts');
-  check(loadSave().settings.quality === 'medium', 'new save: MEDIUM');
+  check(loadSave().settings.quality === 'high', 'v5 new save: HIGH');
   const old = (q: string) => JSON.stringify({ settingsRev: 3, settings: { sound: true, music: true, quality: q, speed: 'normal' } });
   store['xwave-sky-rush-v1'] = old('high');
   const a = loadSave();
-  check(a.settings.quality === 'medium' && a.settings.gfx3 === true, 'old save on HIGH → MEDIUM (once)');
+  check(a.settings.quality === 'high' && a.settings.gfx3 === true && a.settings.v5defaults === true, 'v5: old save on HIGH stays HIGH (v4.2 MEDIUM step + v5 HIGH default)');
+  store['xwave-sky-rush-v1'] = JSON.stringify({ settingsRev: 3, settings: { sound: true, music: true, quality: 'medium', speed: 'normal', gfx3: true, camMotion: true } });
+  const m = loadSave();
+  check(m.settings.quality === 'high' && m.settings.camMotion !== true, 'v5: old save on MEDIUM → HIGH, Camera motion → OFF (once)');
+  store['xwave-sky-rush-v1'] = JSON.stringify({ ...JSON.parse(JSON.stringify(m)), settings: { ...m.settings, quality: 'medium', camMotion: true } });
+  const m2 = loadSave();
+  check(m2.settings.quality === 'medium' && m2.settings.camMotion === true, 'v5: choices made after the update are kept');
   store['xwave-sky-rush-v1'] = old('low');
   check(loadSave().settings.quality === 'low', 'old save on LOW stays LOW');
   store['xwave-sky-rush-v1'] = JSON.stringify({ settingsRev: 3, settings: { sound: true, music: true, quality: 'high', speed: 'normal', gfx3: true } });

@@ -4,6 +4,48 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-25 — v5.0.0 (branch `v5.0`): owner list — death flow, rank by the last 5 runs, calmer road, autoplay
+
+**Owner** (listed first, then fixed): text overlaps, defaults, calmer visuals, no head start ad, restart special, ranking "way 1", CRASHED! / rank board / Finish / Pause from the approved mock-ups (keep the old neon style), autoplay demo scenes for videos.
+
+**Done** (details in the README v5.0.0 section):
+- Settings icon / text overlap; the Home mini-button gap; the native Camera label size and garage silhouettes.
+- Defaults: HI graphics, Camera motion OFF for everyone (a one-time `v5defaults` migration; a stored LO stays LO).
+- `CALM` (config.ts): coins, wall ribs / posts / lamps / rail glow, windows, neon, billboards.
+- Head start ad removed everywhere, including `tiktok.hs-dashboard.json` (4 places).
+- `src/meta/Restart.ts`: the special for Restart.
+- Weekly rank:
+  - `src/meta/RankScore.ts` + `RANKING.lastRuns = 5`;
+  - `Save.weekRuns`;
+  - bots via `botForm`;
+  - the server `pushRun` / `rankScore` (`verified.weekRuns`);
+  - tests `tests/ranking.test.ts` and the server tests.
+- Death flow:
+  - CRASHED! (continue ad, bar, Restart / Home);
+  - the rank board RANK UP! / RACE OVER (one ad: ×2 when ≥ 100 coins, otherwise FREE +100; Details / Restart / Home);
+  - the interstitial only from that board;
+  - Restart / Home during a race end it silently.
+  - Web and native both done.
+- Finish card (big Race Rank, logo, Share inside, no ad) and Pause (LO / MED / HI + Camera).
+- Autoplay (`?demo=dumb|genius|aaa|special&sp=…`, Settings → Autoplay only with `?demo`, nothing saved):
+  - `Autopilot`-driven scenes;
+  - the Tunnel Rider stage builds a real tunnel (`BonusTunnels.update` now runs outside track mode too).
+- QA:
+  - `scripts/qa/layout.mjs` (web layout sweep at 375 × 640; garage / profile strips scroll on purpose);
+  - `scripts/qa/native.mjs` updated (no "no thanks" button any more).
+
+**Checks**: typecheck OK; `npm test` all green; hs-check 0 fail / 0 warn; native QA — see the README.
+
+**Open / interpretations**:
+- "Gold Rush" was taken to mean the Bonus roads (they get the same CRASHED! panel).
+- The all-time board still uses the best single run.
+- No real-phone FPS was measured.
+- The owner should remove `rw_head_start` in the HS dashboard if it is still there.
+
+**Next**: the owner tests the zip on Android + iPhone. Do not upload without approval.
+
+---
+
 ## 2026-10-24 — v5.0.0 on NEW branch `v5.0`: native TikTok Minis release prep
 
 **Owner**: "clone this latest version to a new branch, version 5.0, to prepare a native TikTok Minis release; recheck all errors from scratch with the HS SDK; put in the ad ids already sent."
@@ -26,7 +68,7 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 **Owner fixes the same day**:
 - Home always has 6 buttons: claimed Share / Entry / Launch stay, with a ✓.
-- Camera motion is ON by default.
+- Camera motion was ON by default (changed to OFF on 2026-10-25).
 - After a race, the wrecked car's broken parts were left on Home: `setState('menu')` / `showHome` now reset the car. A native QA check covers it.
 
 **Known**:

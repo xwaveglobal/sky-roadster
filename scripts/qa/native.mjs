@@ -133,10 +133,10 @@ try {
     console.log('B. settings');
     await tap('settings');
     await shot('02_settings');
-    const before = await ev(() => window.__xwave.save.settings.camMotion !== false);
+    const before = await ev(() => window.__xwave.save.settings.camMotion === true);
     await tap('s-cammotion');
-    const after = await ev(() => ({ save: window.__xwave.save.settings.camMotion !== false, rig: window.__xwave.rig.dynamic }));
-    check(before === true && after.save === false && after.rig === false, 'Camera motion: default ON (v5), the switch turns it off (rig follows)', { before, after });
+    const after = await ev(() => ({ save: window.__xwave.save.settings.camMotion === true, rig: window.__xwave.rig.dynamic }));
+    check(before === false && after.save === true && after.rig === true, 'Camera motion: default OFF, the switch turns it on (rig follows)', { before, after });
     await tap('s-cammotion');
     await tap('q-medium');
     const q = await ev(() => window.__xwave.save.settings.quality);
@@ -283,7 +283,7 @@ try {
       await shot('12b_revived');
       // crash again, decline this time
       for (let i = 0; i < 240 && !['continue', 'gameover'].includes(await state()); i++) await ev(() => window.__xwave.advance(0.25));
-      if ((await state()) === 'continue') await tap('contno');
+      if ((await state()) === 'continue') await ev(() => window.__xwave.ui.h.continueNo()); // v5: no 'no thanks' button — the countdown runs out
     }
     for (let i = 0; i < 40 && (await state()) !== 'gameover'; i++) await ev(() => window.__xwave.advance(0.25));
     await until(() => window.__xwave.ui.shown.has('runrank'), 8000);

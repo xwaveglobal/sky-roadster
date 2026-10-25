@@ -10,7 +10,8 @@
 import type { SaveData } from '../../core/Save.ts';
 import type { UIHandlers, RunRewards } from '../../ui/UI.ts';
 import type { Run } from '../../gameplay/Run.ts';
-import type { Board, LbRow } from '../../meta/Leaderboard.ts';
+import type { Board } from '../../meta/Leaderboard.ts';
+import type { RunRankData } from '../../ui/shared.ts';
 import type { ItemKey, Quest, Reward, SpecialKey } from '../../meta/Daily.ts';
 import type { EventInst, Prize } from '../../meta/Events.ts';
 import type { EventResult } from '../../meta/Meta.ts';
@@ -101,7 +102,7 @@ export class UI {
   debugText: string | null = null;
   comfort = true;
   /** v4.6 post-race weekly rank board (over the result card) */
-  rr: { before: number; board: Board; rows: LbRow[]; clsUp: RankClass | null; t0: number } | null = null;
+  rr: (RunRankData & { t0: number }) | null = null;
   /** Step 06.5 / v4.6.1 class promotion celebration */
   cu: { cls: string; color: string; sub: string; car: { id: string; name: string } | null; reward?: { coins: number; item: ItemKey } | null; t0: number } | null = null;
   /** v5: when the Shop's coins → specials exchange was last pointed at (flash) */
@@ -484,7 +485,7 @@ export class UI {
     this.hidden[key] = hide;
     this.dirty = true;
   }
-  adButton(key: 'ad2x' | 'ad2xf' | 'adboost', state: 'ready' | 'used', usedText = '') {
+  adButton(key: 'ad2x' | 'ad2xf', state: 'ready' | 'used', usedText = '') {
     this.adState[key] = { used: state === 'used', text: usedText };
     this.dirty = true;
   }
@@ -602,8 +603,9 @@ export class UI {
     this.dirty = true;
   }
   /** v4.6: the weekly rows around the player; the player's row climbs to the new rank (glowing frame) */
-  runRank(o: { before: number; board: Board; rows: LbRow[]; clsUp: RankClass | null }) {
+  runRank(o: RunRankData) {
     this.rr = { ...o, t0: this.t() };
+    this.adState.ad2x = { used: false, text: '' };
     this.shown.add('runrank');
     this.dirty = true;
   }

@@ -7,6 +7,7 @@ import { dayKey, weekKey, type SaveData } from '../core/Save.ts';
 import { CHECKIN, CHESTS, questsFor, type ItemKey, type QuestStat, type Reward } from './Daily.ts';
 import { cupFor, eventBoard, prizeFor, schedule, type EventInst, type Prize } from './Events.ts';
 import { BASE_CLASSES as CLASSES, playerRank, toBase, type RankClass } from './Rank.ts';
+import { pushRun, rankScore } from './RankScore.ts';
 import { allTimeBoard, avatarColor, weeklyBoard } from './Leaderboard.ts';
 
 export interface RunSummary {
@@ -88,6 +89,7 @@ export class Meta {
       this.s.weekKey = wk;
       this.s.weekBest = 0;
       this.s.expWeek = 0;
+      this.s.weekRuns = [];
     }
   }
 
@@ -190,7 +192,12 @@ export class Meta {
     }
     this.s.weekBest = Math.max(this.s.weekBest, Math.floor(r.score));
     this.s.expBest = Math.max(this.s.expBest, Math.floor(r.exp));
-    this.s.expWeek = Math.max(this.s.expWeek, Math.floor(r.exp));
+    // v5: weekly rank score = average of the last 5 EXP races (up or down with every race)
+    if (r.track === 'endless' || r.track === 'track2') {
+      if (!this.s.weekRuns && this.s.expWeek > 0) this.s.weekRuns = [this.s.expWeek]; // old save: its week best counts once
+      this.s.weekRuns = pushRun(this.s.weekRuns ?? [], r.exp);
+      this.s.expWeek = rankScore(this.s.weekRuns);
+    }
     if (r.track === 'track2') this.s.exp2Best = Math.max(this.s.exp2Best, Math.floor(r.exp));
     const cup = this.myCup();
     if (cup && cup.cup.track === r.track) {

@@ -15,6 +15,19 @@ export const MAX_SPEED = 130;
 /** rank thresholds — must equal EXP.rank in src/config.ts */
 export const RANKS = { D: 0, C: 3000, B: 8000, A: 15000, AA: 26000, AAA: 40000, S: 65000, SS: 85000, SSS: 110000 };
 
+/** v5: weekly rank score = average EXP of the last RANK_RUNS verified races — must equal RANKING.lastRuns in src/config.ts */
+export const RANK_RUNS = 5;
+/** the week's recent verified runs after one more (keeps the last RANK_RUNS) */
+export function pushRun(runs, exp) {
+  return [...(Array.isArray(runs) ? runs : []), Math.max(0, Math.floor(Number(exp) || 0))].slice(-RANK_RUNS);
+}
+/** weekly rank score of those runs (0 when none) */
+export function rankScore(runs) {
+  const last = (Array.isArray(runs) ? runs : []).slice(-RANK_RUNS);
+  if (!last.length) return 0;
+  return Math.round(last.reduce((a, b) => a + b, 0) / last.length);
+}
+
 export function rankOf(expBest, exp2Best = 0) {
   let r = 'D';
   for (const [k, v] of Object.entries(RANKS)) {
@@ -53,7 +66,9 @@ export function clampSave(save, verified) {
   const s = { ...save };
   s.expBest = Math.min(Number(s.expBest) || 0, verified.expBest);
   s.exp2Best = Math.min(Number(s.exp2Best) || 0, verified.exp2Best);
-  s.expWeek = Math.min(Number(s.expWeek) || 0, Math.max(verified.expWeek ?? 0, verified.expBest));
+  // v5: the weekly score is the server's average of the last verified runs (it can go down)
+  s.expWeek = Math.min(Number(s.expWeek) || 0, verified.expWeek ?? 0);
+  if (Array.isArray(verified.weekRuns)) s.weekRuns = [...verified.weekRuns];
   return s;
 }
 

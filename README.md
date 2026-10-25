@@ -193,7 +193,7 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
   - the tt runtime adapter;
   - the canvas UI with the same API as the DOM UI;
   - the HS SDK kit 3.2.3 / SDK 1.1.2.
-- **Same TikTok app, HS game and SDK key as v3**, with the same five ad places: `rw_revive`, `rw_end_bonus`, `rw_free_coins`, `rw_head_start` and `int_race_end`.
+- **Same TikTok app, HS game and SDK key as v3**, with the same ad places: `rw_revive`, `rw_end_bonus`, `rw_free_coins` and `int_race_end` (`rw_head_start` was removed on 2026-10-25, owner request).
 - **No shop code (owner: ads only).** A Remove Ads bought in v3 keeps working. Progress is saved on the device. The Entry / Launch / Share reward buttons that TikTok review needs are there.
 - **v3 platform fixes carried over:**
   - fail-safe, "baked" Web Audio, now combined with the Step 06.5 first-tap unlock;
@@ -219,8 +219,48 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
   - Restart labels.
 - **Owner fixes (2026-10-24, after the first test):**
   - Home always shows its 6 buttons. Share, Entry and Launch stay after they are claimed (a ✓ replaces the "!"); `perkOnHome` in `src/meta/Perks.ts`.
-  - Settings → Camera motion is ON by default. A player who switched it off keeps it off.
+  - Settings → Camera motion: briefly ON by default, then OFF for everyone (owner, 2026-10-25 — see below).
   - Big bug fixed: after a race, Home showed the wrecked car, with the parts that broke off in the final crash lying on the road. The car is now put back together whenever the game returns to the menus.
+- **Owner list (2026-10-25):**
+  - Layout:
+    - Settings: the Account / Language icons no longer cover their text.
+    - The Home mini buttons (Missions …) have more space between the icon and the label.
+    - Native: a bigger Camera motion label, and Garage silhouettes you can see (a dark body with a light rim).
+  - **Defaults:**
+    - Graphics HI and Camera motion OFF, for new players and once for every old save. A stored LO stays LO, and choices made after the update are kept.
+  - **Calmer road** (`CALM` in `config.ts`):
+    - a softer coin glow and a smaller pickup burst;
+    - fewer, dimmer wall ribs, posts, lamps and rail glow;
+    - dimmer windows and neon;
+    - fewer, greyer billboards.
+  - **Head start ad removed** (button, code, HS dashboard place).
+  - **Restart special** (`src/meta/Restart.ts`, tested):
+    - Restart uses the special the player chose last.
+    - If that one is used up, it takes another one from the bag; with an empty bag, the race has none.
+  - **Weekly rank = average EXP of the last 5 runs** (`RANKING.lastRuns`; `src/meta/RankScore.ts`):
+    - Every run moves the rank up or down. The class never drops.
+    - Bots get the same rule: an average of 5 race forms per 1.5 h slot.
+    - The server re-computes it from the verified runs (`server/core.mjs` `pushRun` / `rankScore`). The all-time board still keeps the best run.
+  - **CRASHED! revive panel:**
+    - a CONTINUE button (ad `rw_revive`) with a countdown bar;
+    - Restart, which goes straight into a new race with the auto special;
+    - Home.
+    - It is the same on Bonus roads.
+  - **Death rank board** (the old neon style):
+    - RANK UP! when the weekly rank went up, RACE OVER when it went down, with the row sliding from the old place.
+    - One ad button: ×2 the run's coins when they are 100 or more, otherwise FREE +100.
+    - Details opens the Finish card, plus Restart and Home.
+    - The interstitial shows only when Restart / Home is tapped on this board.
+  - **Finish card:**
+    - a big Race Rank, the logo centred with space around it, and Share inside the card;
+    - no ad button;
+    - ‹ goes back to the rank board.
+  - **Pause:** short LO / MED / HI labels (no line break), plus a Camera ON / OFF button.
+  - **Autoplay for videos** (web only, hidden: Settings → Autoplay with `?demo`; nothing is saved):
+    - 1 · Hopeless pilot (crash after crash);
+    - 2 · Pro pilot (HARD, rank AA, the tightest rows);
+    - 3 · Road to AAA (a 10-minute fast-forward, then the AAA promotion);
+    - 4 · one of the 8 specials on its own set piece, about 15 s (e.g. Tunnel Rider drives through a real tunnel).
 - **Checks:**
   - `npm run check:tiktok`: 0 fail, 0 warn.
   - `scripts/qa/native.mjs`: 25 / 25 in TikTok mode and 25 / 25 in Android mode (HS fake-phone preview, real taps). Screens are in `docs/native-v5/`.

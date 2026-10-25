@@ -99,8 +99,6 @@ export const hs = {
         return !!HSGame.canShowAd('rw_end_bonus');
       case 'free_coins':
         return !!HSGame.canShowAd('rw_free_coins');
-      case 'head_start':
-        return !!HSGame.canShowAd('rw_head_start');
       default:
         return !!HSGame.canShowAd('int_race_end');
     }
@@ -117,9 +115,6 @@ export const hs = {
         break;
       case 'free_coins':
         r = await HSGame.showAd('rw_free_coins');
-        break;
-      case 'head_start':
-        r = await HSGame.showAd('rw_head_start');
         break;
       default:
         r = null;

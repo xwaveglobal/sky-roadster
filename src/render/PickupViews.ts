@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { CALM } from '../config.ts';
 import { Pool } from '../core/Pool.ts';
 import type { LivePickup } from '../gameplay/World.ts';
 import type { PickupKind } from '../gameplay/types.ts';
@@ -252,8 +253,8 @@ export class PickupViews {
     const geo = new THREE.CylinderGeometry(0.42, 0.42, 0.1, 28);
     geo.rotateX(Math.PI / 2);
     const face = coinFaceTexture();
-    const side = new THREE.MeshStandardMaterial({ color: 0xffb81c, metalness: 1, roughness: 0.25, emissive: 0xff9a00, emissiveIntensity: 0.35 });
-    const cap = new THREE.MeshStandardMaterial({ map: face, metalness: 0.7, roughness: 0.3, emissive: 0xffffff, emissiveMap: face, emissiveIntensity: 0.45 });
+    const side = new THREE.MeshStandardMaterial({ color: 0xffb81c, metalness: 1, roughness: 0.25, emissive: 0xff9a00, emissiveIntensity: CALM.coin.sideEmissive });
+    const cap = new THREE.MeshStandardMaterial({ map: face, metalness: 0.7, roughness: 0.3, emissive: 0xffffff, emissiveMap: face, emissiveIntensity: CALM.coin.capEmissive });
     this.coins = new THREE.InstancedMesh(geo, [side, cap, cap], MAX_COINS);
     this.coins.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.coins.count = 0;
@@ -262,7 +263,7 @@ export class PickupViews {
     const glowGeo = new THREE.PlaneGeometry(1.5, 1.5);
     this.coinGlow = new THREE.InstancedMesh(
       glowGeo,
-      new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffb020, transparent: true, opacity: 0.45, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
+      new THREE.MeshBasicMaterial({ map: glowTexture(), color: 0xffb020, transparent: true, opacity: CALM.coin.glowOpacity, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false }),
       MAX_COINS,
     );
     this.coinGlow.count = 0;

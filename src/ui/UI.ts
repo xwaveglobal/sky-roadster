@@ -35,6 +35,8 @@ import { PRODUCTS, type Product } from '../meta/Shop.ts';
 import type { EventResult } from '../meta/Meta.ts';
 import type { CrashTip } from '../gameplay/CrashTip.ts';
 import { LANGS, getLang, setLang, translateTree, type Lang } from './i18n.ts';
+import type { RunRankData } from './shared.ts';
+import { RANKING } from '../config.ts';
 
 /** track thumbnail: remixes reuse their world's art */
 const THUMBS: Record<string, string> = {
@@ -49,9 +51,16 @@ const THUMBS: Record<string, string> = {
 import { UPGRADE_MAX, upgradeCost, SAMPLE_BOARD_NOTE, type UpgradeKey } from './shared.ts';
 export { UPGRADE_MAX, upgradeCost, SAMPLE_BOARD_NOTE, type UpgradeKey };
 
+/** v5: the hidden Autoplay row in Settings (only with ?demo in the URL) */
+const DEMO_MENU_ON = typeof location !== 'undefined' && /[?&]demo\b/.test(location.search);
+
 export interface UIHandlers {
   /** Step 06.5: the class promotion celebration was acknowledged (Continue) */
   classOk?: () => void;
+  /** v5: × on the rank board — Home without an interstitial */
+  closeResults?: () => void;
+  /** v5 web: Settings → Autoplay — open a scene for a video */
+  demo?: (kind: string, sp?: string) => void;
   play(): void;
   garage(): void;
   missions(): void;
@@ -95,7 +104,6 @@ export interface UIHandlers {
   continueNo(): void;
   adDouble(): void;
   adFreeCoins(): void;
-  adBoost(): void;
   // ---- live-ops / meta
   settings(): void;
   closeModal(): void;
@@ -342,12 +350,11 @@ export class UI {
       ${this.head('SELECT TRACK')}
       <div class="track-list" data-k="tracklist"></div>
       <div class="boost-row" data-k="boosts" hidden></div>
-      <button class="btn gold adbtn" data-a="adboost" data-k="adboost" hidden>${ICON.play}</button>
     </section>
 
     <section id="finish" class="screen overlay">
       <div class="panel result">
-        <div class="res-top"><button class="icon-btn sm" data-a="home" aria-label="Close">${ICON.close}</button><img class="res-logo" src="${logoUrl}" alt="" /><button class="icon-btn sm" data-a="share" aria-label="Share">${ICON.share}</button></div>
+        <div class="res-top"><button class="icon-btn sm" data-a="rrcards" data-k="gorr" aria-label="Back to the rank board">${ICON.chevL}</button><button class="icon-btn sm" data-a="home" data-k="gox" aria-label="Close">${ICON.close}</button><img class="res-logo" src="${logoUrl}" alt="" /><i></i></div>
         <div class="finish-title">FINISH! <small class="label" data-k="ftrack">Future City</small></div>
         <div class="scoreline"><div class="stars big" data-k="fstars"></div><div class="final" data-k="ffinal">0</div><div class="newbest" data-k="fnewbest">${ICON.trophy} NEW BEST!</div></div>
         <div class="leftover bonus" data-k="fbonus" hidden>${BAG_ICON}<span>Track bonus</span><small data-k="fbonustxt"></small><b>BAG</b></div>
@@ -427,6 +434,7 @@ export class UI {
         </div>
         <button class="srow lang acct" data-a="account"><span class="si">☁️</span><span class="sl">Account</span><b data-k="acctline">Guest</b>${ICON.chevR}</button>
         <button class="srow lang" data-a="lang"><span class="si">🌐</span><span class="sl">Language</span><b data-k="langname">English</b>${ICON.chevR}</button>
+        ${DEMO_MENU_ON ? `<button class="srow lang" data-a="demomenu"><span class="si">🎬</span><span class="sl">Autoplay (video)</span><b>4 scenes</b>${ICON.chevR}</button>` : ''}
         <div class="sbtns compact">
           <button class="btn sm ghost" data-a="profile">${ICON.user} Profile</button>
           <button class="btn sm ghost" data-a="help">${ICON.info} How to play</button>
@@ -668,12 +676,15 @@ export class UI {
     </section>
 
     <section id="continue" class="screen overlay">
-      <div class="panel cont-panel">
-        <div class="title">REVIVE?</div>
-        <div class="cont-ring"><svg viewBox="0 0 120 120"><circle class="bg" cx="60" cy="60" r="52"/><circle class="fg" data-k="contring" cx="60" cy="60" r="52"/></svg><b data-k="contsec">7</b></div>
+      <div class="panel cont-panel crashed">
+        <div class="title">CRASHED!</div>
         <p class="contleft" data-k="contleft"></p>
-        <button class="btn big gold" data-a="contad">${ICON.play} Watch ad · Revive</button>
-        <button class="btn ghost sm" data-a="contno">No thanks · end race</button>
+        <button class="btn big green contgo" data-a="contad">${ICON.play}<span>CONTINUE</span><em>${ICON.play} AD</em></button>
+        <div class="cont-bar"><i data-k="contbar"></i><b data-k="contsec">7</b></div>
+        <div class="navrow">
+          <button class="btn nav gold" data-a="retry">${ICON.retry}<span>Restart</span></button>
+          <button class="btn nav dark" data-a="home">${ICON.home}<span>Home</span></button>
+        </div>
       </div>
     </section>
 
@@ -685,12 +696,29 @@ export class UI {
         <div class="toggles">
           <button class="toggle" data-a="sound"><span data-ic="sound">${ICON.sound}</span> SFX</button>
           <button class="toggle" data-a="music"><span data-ic="music">${ICON.music}</span> MUSIC</button>
-          <button class="toggle" data-a="quality">${ICON.gear} <span data-k="quality">HIGH</span></button>
+          <button class="toggle" data-a="quality">${ICON.gear} <span data-k="quality">HI</span></button>
         </div>
+        <button class="toggle pcam" data-a="cammotion">🎥 <span>Camera</span> <b data-k="pcam">OFF</b></button>
         <button class="btn big" data-a="resume">${ICON.play} Resume</button>
         <div class="navrow">
           <button class="btn nav blue" data-a="retry">${ICON.retry}<span>Restart</span></button>
           <button class="btn nav dark" data-a="home">${ICON.home}<span>Home</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="demopick" class="screen overlay">
+      <div class="panel modal">
+        <div class="mhead"><h2>AUTOPLAY</h2><button class="icon-btn sm" data-a="closeov" data-v="demopick" aria-label="Close">${ICON.close}</button></div>
+        <p class="tut-lead">A scene plays by itself for your video (about 10 s). Nothing is saved while it plays.</p>
+        <div class="demo-list">
+          <button class="btn dark" data-a="demogo" data-v="dumb"><b>1 · Hopeless pilot</b><small>a few dodges, then crash after crash</small></button>
+          <button class="btn dark" data-a="demogo" data-v="genius"><b>2 · Pro pilot</b><small>HARD · rank AA · the tightest rows</small></button>
+          <button class="btn dark" data-a="demogo" data-v="aaa"><b>3 · Road to AAA</b><small>10 min fast-forward, then rank AAA</small></button>
+        </div>
+        <div class="label">4 · Special items (15 s each)</div>
+        <div class="demo-sp">
+          ${[['super', 'Roadster Jump'], ['hyper', 'HYPER Jump'], ['escape', 'SOS Escape'], ['tunnel', 'Tunnel Rider'], ['ghost', 'Phase Ghost'], ['wall', 'Wall Run'], ['rail', 'Sky Rail'], ['dash', 'Air Dash']].map(([k, n]) => `<button class="btn purple sm" data-a="demogo" data-v="special" data-sp="${k}">${n}</button>`).join('')}
         </div>
       </div>
     </section>
@@ -710,21 +738,23 @@ export class UI {
 
     <section id="runrank" class="screen overlay">
       <div class="panel rr">
-        <div class="rr-top"><button class="icon-btn sm" data-a="rrback" aria-label="Back">${ICON.chevL}</button><b>WEEKLY RANKING</b><button class="icon-btn sm" data-a="home" aria-label="Close">${ICON.close}</button></div>
-        <div class="rr-congrats" data-k="rrcongrats" hidden></div>
+        <div class="rr-top"><button class="icon-btn sm" data-a="rrclose" aria-label="Close">${ICON.close}</button><b data-k="rrtitle">RANK UP!</b><i></i></div>
+        <div class="rr-sub" data-k="rrsub"></div>
+        <div class="rr-card" data-k="rrcard"></div>
         <div class="rr-list" data-k="rrlist"></div>
         <div class="rr-foot" data-k="rrfoot"></div>
+        <button class="btn green rr-ad" data-a="ad2x" data-k="rrad"></button>
         <div class="rr-btns">
-          <button class="btn nav blue" data-a="share">${ICON.share}<span>Share</span></button>
-          <button class="btn nav purple" data-a="rrback">${ICON.info}<span>Details</span></button>
-          <button class="btn nav dark" data-a="home">${ICON.home}<span>Home</span></button>
+          <button class="btn nav dark" data-a="rrback"><span>Details</span></button>
+          <button class="btn nav gold" data-a="retry"><span>Restart</span></button>
+          <button class="btn nav dark" data-a="home"><span>Home</span></button>
         </div>
       </div>
     </section>
 
     <section id="gameover" class="screen overlay">
       <div class="panel result">
-        <div class="res-top"><button class="icon-btn sm" data-a="home" aria-label="Close">${ICON.close}</button><img class="res-logo" src="${logoUrl}" alt="" /><button class="icon-btn sm" data-a="share" aria-label="Share">${ICON.share}</button></div>
+        <div class="res-top"><button class="icon-btn sm" data-a="rrcards" data-k="gorr" aria-label="Back to the rank board">${ICON.chevL}</button><button class="icon-btn sm" data-a="home" data-k="gox" aria-label="Close">${ICON.close}</button><img class="res-logo" src="${logoUrl}" alt="" /><i></i></div>
         <div class="title" data-k="gotitle">FINISH</div>
         <div class="brag" data-k="brag" hidden></div>
         <div class="endexp"><span class="ex">${XPT}</span><div class="final exp" data-k="final">0</div></div>
@@ -735,7 +765,8 @@ export class UI {
           <div class="stat"><span class="label">Best</span><span class="v"><span data-k="gbest">0</span></span></div>
         </div>
         <div class="rwd" data-k="grwd"></div>
-        <button class="btn gold adbtn" data-a="ad2x" data-k="ad2x">${ICON.play} Watch ad · +20% coins</button>
+        <button class="btn blue sm res-share" data-a="share">${ICON.share}<span>Share</span></button>
+        <button class="btn gold adbtn" data-a="ad2x" data-k="ad2x" hidden>${ICON.play} Watch ad · +20% coins</button>
         <button class="btn big retry" data-a="retry">${ICON.retry} Restart</button>
         <div class="navrow">
           <button class="btn nav blue" data-a="home">${ICON.home}<span>Home</span></button>
@@ -799,7 +830,6 @@ export class UI {
         case 'contshop': return this.h.shop();
         case 'ad2x': return this.h.adDouble();
         case 'adfree': return this.h.adFreeCoins();
-        case 'adboost': return this.h.adBoost();
         case 'tutstart': return this.h.startTutorial();
         case 'tdagain': return this.h.trainAgain();
         case 'advtrain': return this.h.advTrain(el.dataset.v!);
@@ -926,6 +956,17 @@ export class UI {
           // the race details (result card with Restart) are right under the rank board
           this.hideOverlay('runrank');
           return;
+        case 'rrcards':
+          // result card → back to the rank board
+          this.showOverlay('runrank');
+          return;
+        case 'demomenu':
+          this.showOverlay('demopick');
+          return;
+        case 'demogo':
+          return this.h.demo?.(el.dataset.v!, el.dataset.sp);
+        case 'rrclose':
+          return this.h.closeResults ? this.h.closeResults() : this.h.home();
         case 'savepname': return this.h.setName($<HTMLInputElement>(this.root, '[data-k="pnameinput"]').value);
         case 'pickcar':
           this.garageIndex = SKINS.findIndex((x) => x.id === el.dataset.id);
@@ -1068,7 +1109,9 @@ export class UI {
     // home top bar: compact amount (11.2K) so the profile chip keeps its room
     this.root.querySelectorAll<HTMLElement>('#start [data-k="wallet"]').forEach((e) => (e.textContent = s.wallet >= 10000 ? `${(s.wallet / 1000).toFixed(s.wallet >= 100000 ? 0 : 1)}K` : fmt(s.wallet)));
     this.setAll('best', fmt(s.best));
-    this.setAll('quality', (this.liveQuality ?? s.settings.quality).toUpperCase());
+    // v5 (owner): short labels — "MEDIUM" wrapped onto two lines in the Pause toggles
+    this.setAll('quality', { low: 'LO', medium: 'MED', high: 'HI' }[this.liveQuality ?? s.settings.quality] ?? 'HI');
+    this.setAll('pcam', s.settings.camMotion === true ? 'ON' : 'OFF');
     this.speedTip(s.settings.speed);
     this.root.querySelectorAll<HTMLElement>('[data-a="speed"]').forEach((b) => {
       const on = b.dataset.v === s.settings.speed;
@@ -1082,7 +1125,7 @@ export class UI {
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="sound"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.sound)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="music"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.music)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="comfort"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.comfort !== false)));
-    this.root.querySelectorAll<HTMLElement>('.switch[data-a="cammotion"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.camMotion !== false)));
+    this.root.querySelectorAll<HTMLElement>('.switch[data-a="cammotion"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.camMotion === true)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="vibrate"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.vibrate !== false)));
     this.root.querySelectorAll<HTMLElement>('.switch[data-a="assist"]').forEach((b) => b.setAttribute('aria-checked', String(s.settings.assist !== false)));
     const q = this.liveQuality ?? s.settings.quality;
@@ -1410,6 +1453,10 @@ export class UI {
     // Endless/Mega Rush: "FINISH"; from rank C up a special brag card made to be shown off
     const brag = !!o.runRank && CLASSES.indexOf(o.runRank) >= CLASSES.indexOf('C');
     this.setAll('gotitle', o.bonus ? 'BONUS END' : 'FINISH');
+    // v5: EXP races come with the rank board on top → ‹ back to it; Bonus has none → ×
+    // both result cards (#finish / #gameover) carry the same top row
+    for (const e of this.root.querySelectorAll<HTMLElement>('[data-k="gorr"]')) e.hidden = !!o.bonus;
+    for (const e of this.root.querySelectorAll<HTMLElement>('[data-k="gox"]')) e.hidden = !o.bonus;
     const panel = this.screens.gameover.querySelector<HTMLElement>('.result')!;
     panel.classList.toggle('braggy', brag);
     if (brag) panel.style.setProperty('--cc', CLASS_COLOR[o.runRank!]);
@@ -1682,17 +1729,16 @@ export class UI {
 
   continueOffer(o: { left: number; tip?: CrashTip | null }) {
     void o.tip;
-    $(this.root, '[data-k="contleft"]').innerHTML = `<b>${o.left} / 2</b> revives left`;
+    $(this.root, '[data-k="contleft"]').innerHTML = `Keep your EXP and distance · <b>${o.left} / 2</b> revives left`;
     this.continueTick(1, 7);
     this.show('hud', 'continue');
   }
 
   continueTick(k: number, secLeft: number) {
+    // v5 (owner mock-up): a countdown bar under CONTINUE
     this.setAll('contsec', String(Math.max(0, Math.ceil(secLeft))));
-    const c = this.root.querySelector<SVGCircleElement>('[data-k="contring"]')!;
-    const len = 2 * Math.PI * 52;
-    c.style.strokeDasharray = `${len}`;
-    c.style.strokeDashoffset = `${len * (1 - k)}`;
+    const c = this.root.querySelector<HTMLElement>('[data-k="contbar"]');
+    if (c) c.style.width = `${Math.max(0, Math.min(1, k)) * 100}%`;
   }
 
   hideEl(key: string, hide: boolean) {
@@ -1701,7 +1747,7 @@ export class UI {
   }
 
   /** Reset/disable a rewarded-ad button (text after use). */
-  adButton(key: 'ad2x' | 'ad2xf' | 'adboost', state: 'ready' | 'used', usedText = '') {
+  adButton(key: 'ad2x' | 'ad2xf', state: 'ready' | 'used', usedText = '') {
     const b = $(this.root, `[data-k="${key}"]`);
     if (!b.dataset.ready) b.dataset.ready = b.innerHTML;
     if (state === 'ready') {
@@ -1712,6 +1758,14 @@ export class UI {
       b.innerHTML = `${ICON.check} ${usedText}`;
       b.setAttribute('disabled', '');
       b.classList.add('used');
+    }
+    // v5: the rank board's coin ad (same action) — once watched it shows what it paid
+    if (key === 'ad2x' && state === 'used' && usedText) {
+      const r = this.root.querySelector<HTMLElement>('[data-k="rrad"]');
+      if (r) {
+        r.innerHTML = `${ICON.check} <span>${usedText}</span>`;
+        r.setAttribute('disabled', '');
+      }
     }
   }
 
@@ -1859,30 +1913,57 @@ export class UI {
    * moved the player up, the player's row climbs from the old position to the new one with a glowing
    * frame and a congratulation (class promotion included).
    */
-  runRank(o: { before: number; board: Board; rows: LbRow[]; clsUp: RankClass | null }) {
+  runRank(o: RunRankData) {
     this.rowCache = [];
     const y = o.board.you;
-    const up = o.before > y.rank && y.score > 0;
-    const list = $(this.root, '[data-k="rrlist"]');
-    list.innerHTML = o.rows.map((r) => this.lbRow(r)).join('');
-    const me = list.querySelector<HTMLElement>('.lbrow.you');
-    const cg = $(this.root, '[data-k="rrcongrats"]');
-    cg.hidden = !up && !o.clsUp;
-    cg.innerHTML = `${o.clsUp ? `${classBadge(o.clsUp)} <b>CLASS ${o.clsUp}!</b> ` : ''}${up ? `${ICON.trophy} <b>RANK UP!</b> #${fmt(o.before)} → #${fmt(y.rank)}` : ''}`;
-    const pct = Math.max(0.1, (y.rank / o.board.total) * 100);
-    $(this.root, '[data-k="rrfoot"]').innerHTML = y.score <= 0 ? 'Drive a race to get ranked' : `Top ${pct < 1 ? pct.toFixed(1) : Math.ceil(pct)}% of ${fmt(o.board.total)} pilots${o.board.next ? ` · EXP <b>${fmt(o.board.next.score)}</b> for <b>#${fmt(o.board.next.rank)}</b>` : ''}`;
+    const ranked = y.score > 0;
+    const up = ranked && o.before > y.rank;
+    const moved = ranked && o.before > 0 && o.before !== y.rank ? Math.abs(o.before - y.rank) : 0;
     const sc = this.screens.runrank;
     sc.classList.toggle('up', up);
+    sc.classList.toggle('down', !up);
+    this.setAll('rrtitle', up ? 'RANK UP!' : 'RACE OVER');
+    $(this.root, '[data-k="rrsub"]').innerHTML = !ranked
+      ? 'Drive a race to get ranked'
+      : up
+        ? `You passed <b>${fmt(moved)}</b> pilot${moved === 1 ? '' : 's'} this week`
+        : moved
+          ? `You slipped <b>${fmt(moved)}</b> place${moved === 1 ? '' : 's'} — beat your best to climb back`
+          : 'Same place this week — beat your best to climb';
+    const cls = classForScore(o.best);
+    const arrow = moved ? `<em class="${up ? 'up' : 'dn'}">${up ? '▲' : '▼'} ${fmt(moved)}</em>` : '';
+    $(this.root, '[data-k="rrcard"]').innerHTML = `<span class="rr-cls">${classBadge(o.clsUp ?? cls)}</span>
+      <span class="rr-wk"><small>WEEKLY RANK</small><b data-k="rrnum">${ranked ? `#${fmt(up ? o.before : y.rank)}` : '—'}</b>${arrow}</span>
+      <span class="rr-ex"><small>THIS RACE <b class="${up ? 'gold' : 'pink'}">${fmt(o.thisRace)}</b></small><small>YOUR BEST <b>${fmt(o.best)}</b></small></span>`;
+    // rows: RANK UP! = rivals above, you, one below, then the "from #old" slot; RACE OVER = the slot first
+    const ghost = ranked && moved ? `<div class="rr-ghost">from #${fmt(o.before)}</div>` : '';
+    const list = $(this.root, '[data-k="rrlist"]');
+    list.innerHTML = (up ? '' : ghost) + o.rows.map((r) => this.lbRow(r)).join('') + (up ? ghost : '');
+    const pct = Math.max(0.1, (y.rank / o.board.total) * 100);
+    const top = `Top ${pct < 1 ? pct.toFixed(1) : Math.ceil(pct)}%`;
+    const above = o.rows[o.rows.findIndex((r) => r.you) - 1];
+    $(this.root, '[data-k="rrfoot"]').innerHTML = !ranked
+      ? ''
+      : up && above
+        ? `${top} of ${fmt(o.board.total)} pilots · <b>${fmt(Math.max(1, above.score - y.score + 1))}</b> EXP more to pass #${fmt(above.rank)}`
+        : `${top} · rank = average of your last ${RANKING.lastRuns} races`;
+    // the one coin ad: ×2 the race's coins (≥ 100) or FREE +100
+    const ad = $(this.root, '[data-k="rrad"]');
+    ad.hidden = !o.ad.can;
+    ad.removeAttribute('disabled');
+    ad.innerHTML = `${coinFace(24)}<span>${o.ad.double ? `×2 COINS +${fmt(o.ad.extra)}` : `FREE +${fmt(o.ad.extra)} COINS`}</span><em>${ICON.play} AD</em>`;
     this.showOverlay('runrank');
+    const me = list.querySelector<HTMLElement>('.lbrow.you');
     if (!me) return;
     me.classList.add('rr-me');
-    if (!up) return;
-    // the climb: the row starts lower (old rank) and slides up while its number counts down
-    const rowsUp = Math.min(3, o.rows.length - 1 - o.rows.findIndex((r) => r.you));
-    const h = me.getBoundingClientRect().height + 6;
-    me.style.transform = `translateY(${Math.max(1, rowsUp) * h}px)`;
+    if (!moved) return;
+    // the slide: the player's row starts on the "from #old" slot and moves up / down to its new place,
+    // its number counting to the new rank
+    const g = list.querySelector<HTMLElement>('.rr-ghost');
+    const dy = g ? g.getBoundingClientRect().top - me.getBoundingClientRect().top : 0;
     me.style.transition = 'none';
-    const num = me.querySelector('.lr b');
+    me.style.transform = `translateY(${dy}px)`;
+    const nums = [me.querySelector('.lr b'), this.root.querySelector('[data-k="rrnum"]')];
     const t0 = performance.now();
     const dur = 1600;
     requestAnimationFrame(() => {
@@ -1892,7 +1973,7 @@ export class UI {
     const tick = (now: number) => {
       const k = Math.min(1, (now - t0) / dur);
       const e = 1 - Math.pow(1 - k, 3);
-      if (num) num.textContent = `#${fmt(Math.round(o.before + (y.rank - o.before) * e))}`;
+      for (const n of nums) if (n) n.textContent = `#${fmt(Math.round(o.before + (y.rank - o.before) * e))}`;
       if (k < 1) requestAnimationFrame(tick);
       else me.classList.add('rr-done');
     };

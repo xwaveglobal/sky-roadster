@@ -13,7 +13,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
-import { verifyRun, clampSave, summary, normEmail, validEmail, rankOf, RANKS } from './core.mjs';
+import { verifyRun, clampSave, summary, normEmail, validEmail, rankOf, RANKS, pushRun, rankScore } from './core.mjs';
 
 /** most EXP a pre-cloud (unverified) save may bring in once */
 const LEGACY_CAP = { endless: RANKS.AAA + 6000, track2: RANKS.SSS };
@@ -72,7 +72,7 @@ const rows = (board) => Object.values(db.scores).filter((s) => s.board === board
 
 function newAccount() {
   const id = `a_${newId()}`;
-  db.accounts[id] = { id, created: Date.now(), email: null, providers: [], verified: { expBest: 0, exp2Best: 0, expWeek: 0, week: '' } };
+  db.accounts[id] = { id, created: Date.now(), email: null, providers: [], verified: { expBest: 0, exp2Best: 0, expWeek: 0, week: '', weekRuns: [] } };
   touch();
   return db.accounts[id];
 }
@@ -298,15 +298,19 @@ http
           if (a.verified.week !== wk) {
             a.verified.week = wk;
             a.verified.expWeek = 0;
+            a.verified.weekRuns = [];
           }
           if (run.variant === 'track2') a.verified.exp2Best = Math.max(a.verified.exp2Best, v.exp);
           else a.verified.expBest = Math.max(a.verified.expBest, v.exp);
-          a.verified.expWeek = Math.max(a.verified.expWeek, v.exp);
+          // v5: weekly rank score = average of the last RANK_RUNS verified races (up or down)
+          a.verified.weekRuns = pushRun(a.verified.weekRuns, v.exp);
+          a.verified.expWeek = rankScore(a.verified.weekRuns);
           // boards use the verified numbers
           const pid = run.playerId ? String(run.playerId) : a.id;
           for (const [board, score] of [['all', a.verified.expBest], [`week:${wk}`, a.verified.expWeek]]) {
             const k = `${board}|${pid}`;
-            if (!db.scores[k] || score > db.scores[k].score) db.scores[k] = { board, playerId: pid, score, at: Date.now() };
+            // all-time keeps the best race; the weekly score is replaced (it moves both ways)
+            if (!db.scores[k] || board !== 'all' || score > db.scores[k].score) db.scores[k] = { board, playerId: pid, score, at: Date.now() };
           }
         }
         touch();

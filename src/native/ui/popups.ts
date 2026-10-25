@@ -11,7 +11,7 @@ import { CLASSES, CLASS_COLOR, CLASS_MIN, classFor, type RankClass } from '../..
 import { CHECKIN, ITEM_PRICE, LOCKED_SPECIALS, SPECIALS, type ItemKey, type SpecialKey } from '../../meta/Daily.ts';
 import { COUNTRIES, countryName } from '../../meta/Country.ts';
 import { codeOfFlag, flagSvg, svgFlags } from '../../meta/Flags.ts';
-import { LANGS } from '../../ui/i18n.ts';
+import { LANGS, getLang, tr } from '../../ui/i18n.ts';
 import { SKINS } from '../../render/Vehicle.ts';
 import { carImage, carRear, logoImg } from '../../ui/shared.ts';
 import { calendarGift, coinPile, giftBox, megaphone, shareNodes, starBig, wifiRobot, phonePlus } from '../../ui/art.ts';
@@ -179,10 +179,12 @@ function gameoverOv(ui: UI, g: Gfx) {
   if (!o) return;
   const brag = !!o.runRank && CLASSES.indexOf(o.runRank) >= CLASSES.indexOf('C');
   modal(ui, g, 'gameover', { close: 'none', rim: brag ? CLASS_COLOR[o.runRank as RankClass] : undefined }, (x, y, w) => {
-    iconBtn(g, 'go-x', x - 4, y - 4, 34, ICON.close, () => ui.h.home());
-    iconBtn(g, 'go-share', x + w - 30, y - 4, 34, ICON.share, () => ui.h.share());
-    g.img(logoImg, x + w / 2 - 60, y - 6, 120, 40, 'contain');
-    y += 40;
+    // v5 (owner): ‹ back to the rank board (EXP races) / × (Bonus); the logo gets room to breathe;
+    // Share sits inside the card; no ad on this card
+    if (o.bonus || !ui.rr) iconBtn(g, 'go-x', x - 4, y - 4, 34, ICON.close, () => ui.h.home());
+    else iconBtn(g, 'go-back', x - 4, y - 4, 34, ICON.chevL, () => ui.showOverlay('runrank'));
+    g.img(logoImg, x + w / 2 - 70, y + 2, 140, 46, 'contain');
+    y += 58;
     g.text(o.bonus ? 'BONUS END' : 'FINISH', x + w / 2, y + 14, { size: 26, align: 'center', italic: true, color: C.gold });
     y += 34;
     if (brag && o.runRank) {
@@ -220,7 +222,12 @@ function gameoverOv(ui: UI, g: Gfx) {
       g.rich(`${BOLT} <b>${fmt(o.score)}</b>`, x, y, w, { size: 34, align: 'center' });
       y += 50;
       let line = '';
-      if (o.runRank) line += `${badge(o.runRank)} <small>RACE RANK</small> <b>${o.runRank}</b>  `;
+      // v5: a big Race Rank plate
+      if (o.runRank) {
+        g.text('RACE RANK', x + w / 2, y + 6, { size: 10, align: 'center', color: C.muted, font: 'b', noTr: true, shadow: null });
+        rankBadge(g, o.runRank, x + w / 2 - 34, y + 16, 54);
+        y += 78;
+      }
       if (o.isBest) line += `<b class="gold">${ICON.trophy} NEW BEST</b>  `;
       if (o.pos) line += `${ICON.podium}<b>${o.pos}</b>`;
       if (line) y += g.rich(line, x, y, w, { size: 13, align: 'center' }) + 6;
@@ -236,7 +243,10 @@ function gameoverOv(ui: UI, g: Gfx) {
       }
     }
     y = rewards(ui, g, o.rewards, [{ label: 'race', coins: o.coins }, { label: `${o.level} bonus`, coins: o.speedBonus }], x, y, w);
-    y = adBtn(ui, g, 'ad2x', x, y, w);
+    if (hs.hasShare() && !brag) {
+      button(g, 'go-share', x + w / 2 - 80, y, 160, 40, `${ICON.share} Share`, () => ui.h.share(), { style: 'blue', size: 14 });
+      y += 48;
+    }
     button(g, 'go-retry', x, y, w, 52, `${ICON.retry} Restart`, () => ui.h.retry(), { style: 'blue', size: 20 });
     y += 60;
     return navRow(g, x, y, w, [
@@ -247,63 +257,101 @@ function gameoverOv(ui: UI, g: Gfx) {
   });
 }
 
-// ------------------------------------------------------------------ v4.6 post-race weekly rank board
+// ------------------------------------------------------------------ v5 post-race weekly rank board (owner mock-up)
 /**
- * Over the result card: the weekly rows around the player. When this race moved the player up, the
- * player's row climbs from the old position to the new one (its number counts down) with a glowing
- * gold frame and a RANK UP / CLASS congratulation. Share · Details (the result card) · Home; Back + ×.
+ * RANK UP! (weekly rank went up) or RACE OVER (down / same). Card: class, WEEKLY RANK # ▲/▼ n, THIS RACE,
+ * YOUR BEST. Rows: RANK UP! = rivals above, you, one below, then the dashed "from #old" slot; RACE OVER =
+ * the slot first, then rivals and you. The player's row slides from the slot to its new place while its
+ * number counts. One coin ad (×2 the race's coins, or FREE +100) · Details · Restart · Home; × = Home.
  */
 function runrankOv(ui: UI, g: Gfx) {
   const o = ui.rr;
   if (!o) return;
   const y0 = o.board.you;
-  const up = o.before > y0.rank && y0.score > 0;
+  const ranked = y0.score > 0;
+  const up = ranked && o.before > y0.rank;
+  const moved = ranked && o.before > 0 && o.before !== y0.rank ? Math.abs(o.before - y0.rank) : 0;
   const k = Math.min(1, Math.max(0, (g.time - o.t0 - 250) / 1600));
   const e = 1 - Math.pow(1 - k, 3);
-  modal(ui, g, 'runrank', { close: 'none', w: 380 }, (x, y, w) => {
-    iconBtn(g, 'rr-back', x - 4, y - 4, 34, ICON.chevL, () => ui.hideOverlay('runrank'));
-    iconBtn(g, 'rr-x', x + w - 30, y - 4, 34, ICON.close, () => ui.h.home());
-    g.text('WEEKLY RANKING', x + w / 2, y + 13, { size: 18, align: 'center', italic: true, maxW: w - 90 });
+  const shownRank = moved ? Math.round(o.before + (y0.rank - o.before) * e) : y0.rank;
+  modal(ui, g, 'runrank', { close: 'none', w: 372 }, (x, y, w) => {
+    iconBtn(g, 'rr-x', x - 4, y - 2, 34, ICON.close, () => (ui.h.closeResults ? ui.h.closeResults() : ui.h.home()));
+    g.text(up ? 'RANK UP!' : 'RACE OVER', x + w / 2, y + 16, { size: 28, align: 'center', italic: true, color: up ? C.gold : '#ffffff', maxW: w - 90 });
     y += 40;
-    if (up || o.clsUp) {
-      const msg = `${o.clsUp ? `${badge(o.clsUp)} <b>CLASS ${o.clsUp}!</b>  ` : ''}${up ? `${ICON.trophy} <b>RANK UP!</b> #${fmt(o.before)} → #${fmt(y0.rank)}` : ''}`;
-      card(g, x, y, w, 36, 12, C.gold, 'rgba(255,194,26,.14)');
-      g.rich(msg, x + 8, y + 9, w - 16, { size: 13, align: 'center' });
-      y += 44;
+    const sub = !ranked ? 'Drive a race to get ranked' : up ? `You passed <b>${fmt(moved)}</b> pilot${moved === 1 ? '' : 's'} this week` : moved ? `You slipped <b>${fmt(moved)}</b> place${moved === 1 ? '' : 's'} — beat your best to climb back` : 'Same place this week — beat your best to climb';
+    y += g.rich(sub, x, y, w, { size: 12.5, align: 'center', font: 'b', color: '#dfe8ff' }) + 8;
+    // card
+    card(g, x, y, w, 70, 16, 'rgba(130,175,255,.25)', 'rgba(10,18,52,.85)');
+    const cls = (o.clsUp ?? classFor(o.best)) as RankClass;
+    rankBadge(g, cls, x + 10, y + 13, 44);
+    g.text('WEEKLY RANK', x + 76, y + 18, { size: 9.5, color: C.muted, font: 'b', noTr: true, shadow: null });
+    g.text(ranked ? `#${fmt(shownRank)}` : '—', x + 76, y + 42, { size: 24, italic: true, noTr: true });
+    if (moved) {
+      const nw = g.measure(`#${fmt(shownRank)}`, { size: 24 });
+      g.text(`${up ? '▲' : '▼'} ${fmt(moved)}`, x + 82 + nw, y + 44, { size: 13, color: up ? C.green : '#ff5a6e', noTr: true });
     }
-    const meIdx = o.rows.findIndex((r) => r.you);
-    const rowsUp = up && meIdx >= 0 ? Math.max(1, Math.min(3, o.rows.length - 1 - meIdx)) : 0;
-    const rh = 56;
+    g.rich(`<small>THIS RACE</small> <b class="${up ? 'gold' : ''}">${fmt(o.thisRace)}</b>`, x + w / 2, y + 12, w / 2 - 12, { size: 12, align: 'right' });
+    g.rich(`<small>YOUR BEST</small> <b>${fmt(o.best)}</b>`, x + w / 2, y + 38, w / 2 - 12, { size: 12, align: 'right' });
+    y += 80;
+    // rows + the "from #old" slot
+    const rh = 54;
+    const ghostTop = moved && !up;
+    const slots = o.rows.length + (moved ? 1 : 0);
     const listTop = y;
-    // the other rows first, the player's row last (drawn on top while it climbs)
+    const ghostY = moved ? (ghostTop ? listTop : listTop + o.rows.length * rh) : 0;
+    const rowY = (i: number) => listTop + (ghostTop ? 1 : 0) * rh + i * rh;
+    if (moved && !g.dry) {
+      g.ctx.save();
+      g.ctx.setLineDash([6, 5]);
+      g.rr(x, ghostY, w, rh - 6, 12, null, 'rgba(255,255,255,.3)', 1.5);
+      g.ctx.restore();
+      g.text(`from #${fmt(o.before)}`, x + 14, ghostY + (rh - 6) / 2, { size: 12, font: 'b', color: 'rgba(255,255,255,.55)', noTr: true });
+    }
     const draw = (r: (typeof o.rows)[number], yy: number, me: boolean) => {
-      const cls = r.you ? ui.myClass : classFor(r.score);
-      const unranked = r.you && r.score <= 0;
+      const c2 = r.you ? ui.myClass : classFor(r.score);
       if (me && !g.dry) {
         const glow = 0.55 + 0.45 * Math.sin(g.time / 260);
-        g.shadow(`rgba(255,210,74,${glow})`, 16);
-        g.rr(x, yy, w, 50, 12, 'rgba(255,194,26,.2)', '#ffd24a', 2);
-        g.shadow(null);
-      } else g.rr(x, yy, w, 50, 12, 'rgba(10,20,52,.78)', 'rgba(130,175,255,.16)');
-      const shownRank = me && up ? Math.round(o.before + (y0.rank - o.before) * e) : r.rank;
-      g.text(unranked ? '—' : `#${fmt(shownRank)}`, x + 32, yy + 25, { size: 13, align: 'center', maxW: 56, noTr: true });
-      g.icon(avatarSvg(r.av ?? avatarForName(r.name)), x + 64, yy + 7, 36);
-      g.text(r.name + (r.you ? '  YOU' : ''), x + 108, yy + 17, { size: 12, maxW: w - 200, color: r.you ? C.gold : '#fff', noTr: true });
-      g.rich(`${r.flag} <span class="clsb" style="--cc:${CLASS_COLOR[cls]}">${cls}</span>`, x + 108, yy + 25, w - 200, { size: 11 });
-      g.rich(`<b>${fmt(r.score)}</b> ${BOLT}`, x + w - 100, yy + 16, 90, { size: 12, align: 'right' });
+        g.rr(x, yy, w, rh - 6, 12, up ? 'rgba(255,194,26,.2)' : 'rgba(255,90,110,.18)', up ? `rgba(255,210,74,${0.6 + 0.4 * glow})` : `rgba(255,107,126,${0.6 + 0.4 * glow})`, 2);
+      } else g.rr(x, yy, w, rh - 6, 12, 'rgba(10,20,52,.78)', 'rgba(130,175,255,.16)');
+      g.text(`#${fmt(me ? shownRank : r.rank)}`, x + 32, yy + 18, { size: 13, align: 'center', maxW: 58, noTr: true });
+      if (me && moved) g.text(`${up ? '▲' : '▼'} ${fmt(moved)}`, x + 32, yy + 35, { size: 10, align: 'center', color: up ? C.green : '#ff5a6e', noTr: true });
+      g.icon(avatarSvg(r.av ?? avatarForName(r.name)), x + 64, yy + 6, 36);
+      g.text(r.name + (r.you ? '  YOU' : ''), x + 108, yy + 16, { size: 12, maxW: w - 200, color: r.you ? C.gold : '#fff', noTr: true });
+      g.rich(`${r.flag} <span class="clsb" style="--cc:${CLASS_COLOR[c2]}">${c2}</span>`, x + 108, yy + 24, w - 200, { size: 11 });
+      g.rich(`<b>${fmt(r.score)}</b>`, x + w - 100, yy + 15, 88, { size: 13, align: 'right' });
     };
+    const meIdx = o.rows.findIndex((r) => r.you);
     o.rows.forEach((r, i) => {
-      if (!r.you) draw(r, listTop + i * rh, false);
+      if (!r.you) draw(r, rowY(i), false);
     });
-    if (meIdx >= 0) draw(o.rows[meIdx], listTop + meIdx * rh + rowsUp * rh * (1 - e), true);
-    y = listTop + o.rows.length * rh + 4;
+    if (meIdx >= 0) {
+      const target = rowY(meIdx);
+      draw(o.rows[meIdx], moved ? ghostY + (target - ghostY) * e : target, true);
+    }
+    y = listTop + slots * rh + 2;
     const pct = Math.max(0.1, (y0.rank / o.board.total) * 100);
-    y += g.rich(y0.score <= 0 ? 'Drive a race to get ranked' : `Top ${pct < 1 ? pct.toFixed(1) : Math.ceil(pct)}% of ${fmt(o.board.total)} pilots${o.board.next ? ` · EXP <b>${fmt(o.board.next.score)}</b> for <b>#${fmt(o.board.next.rank)}</b>` : ''}`, x, y, w, { size: 11, align: 'center', font: 'b', color: C.muted }) + 10;
-    const items: [string, string, string, BtnStyle, () => void][] = [];
-    if (hs.hasShare()) items.push(['rr-share', ICON.share, 'Share', 'blue', () => ui.h.share()]);
-    items.push(['rr-details', ICON.info, 'Details', 'purple', () => ui.hideOverlay('runrank')]);
-    items.push(['rr-home', ICON.home, 'Home', 'dark', () => ui.h.home()]);
-    return navRow(g, x, y, w, items);
+    const topTxt = `Top ${pct < 1 ? pct.toFixed(1) : Math.ceil(pct)}%`;
+    const above = o.rows[meIdx - 1];
+    if (ranked) y += g.rich(up && above ? `${topTxt} of ${fmt(o.board.total)} pilots · <b>${fmt(Math.max(1, above.score - y0.score + 1))}</b> EXP more to pass #${fmt(above.rank)}` : `${topTxt} · rank = average of your last 5 races`, x, y, w, { size: 11, align: 'center', font: 'b', color: C.muted }) + 10;
+    // the one coin ad (HS rule 12: only while an ad can be shown)
+    if (o.ad.can && hs.hasAds() && hs.canShowAd('double_coins')) {
+      const st = ui.adState.ad2x;
+      if (st?.used && st.text) button(g, 'rr-ad', x, y, w, 52, `${ICON.check} ${st.text}`, () => {}, { style: 'ghost', disabled: true, size: 15 });
+      else {
+        button(g, 'rr-ad', x, y, w, 52, `${ICON.coin} ${o.ad.double ? `×2 COINS +${fmt(o.ad.extra)}` : `FREE +${fmt(o.ad.extra)} COINS`}`, () => ui.h.adDouble(), { style: 'green', size: 19 });
+        if (!g.dry) {
+          const tw = g.measure('AD', { size: 11 }) + 30;
+          g.rr(x + w - tw - 12, y - 9, tw, 20, 8, '#11173a', '#ffd24a', 1);
+          g.rich(`${ICON.play} AD`, x + w - tw - 12, y - 6, tw, { size: 11, align: 'center', color: '#ffd24a' });
+        }
+      }
+      y += 62;
+    }
+    return navRow(g, x, y, w, [
+      ['rr-details', '', 'Details', 'dark', () => ui.hideOverlay('runrank')],
+      ['rr-restart', '', 'Restart', 'gold', () => ui.h.retry()],
+      ['rr-home', '', 'Home', 'dark', () => ui.h.home()],
+    ]);
   });
 }
 
@@ -441,33 +489,33 @@ function finishOv(ui: UI, g: Gfx) {
   });
 }
 
+/** v5 (owner mock-up): CRASHED! — CONTINUE (rewarded ad rw_revive), a countdown bar, Restart · Home */
 function continueOv(ui: UI, g: Gfx) {
-  modal(ui, g, 'continue', { close: 'none', w: 320 }, (x, y, w) => {
-    g.text('REVIVE?', x + w / 2, y + 14, { size: 26, align: 'center', italic: true });
-    y += 36;
-    const cx = x + w / 2,
-      cy = y + 60;
-    if (!g.dry) {
-      g.circle(cx, cy, 52, 'rgba(0,0,0,.3)', 'rgba(255,255,255,.15)', 8);
-      const c = g.ctx;
-      c.beginPath();
-      c.arc(cx, cy, 52, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * ui.cont.k);
-      c.strokeStyle = C.gold;
-      c.lineWidth = 8;
-      c.lineCap = 'round';
-      c.stroke();
-    }
-    g.text(String(Math.max(0, Math.ceil(ui.cont.sec))), cx, cy + 2, { size: 40, align: 'center', noTr: true });
-    y += 130;
-    g.rich(`<b>${ui.cont.left} / 2</b> revives left`, x, y, w, { size: 13, align: 'center' });
-    y += 26;
-    // v3.0.11: the ad button only while HSGame has a revive ad ready (re-checked every frame —
-    // the countdown redraws the popup); otherwise a quiet "loading" line, never a dead button
-    if (hs.canShowAd('continue')) button(g, 'contad', x, y, w, 54, `${ICON.play} Watch ad · Revive`, () => ui.h.continueAd(), { style: 'gold', size: 17 });
-    else button(g, 'contad', x, y, w, 54, hs.hasAds() ? `${ICON.clock} Ad loading…` : `${ICON.info} No ad available`, () => {}, { style: 'ghost', disabled: true, size: 15 });
-    y += 62;
-    button(g, 'contno', x + 30, y, w - 60, 38, 'No thanks · end race', () => ui.h.continueNo(), { style: 'ghost', size: 13 });
-    return y + 42;
+  modal(ui, g, 'continue', { close: 'none', w: 330 }, (x, y, w) => {
+    g.text('CRASHED!', x + w / 2, y + 16, { size: 32, align: 'center', italic: true, color: '#ff6b7e' });
+    y += 42;
+    y += g.rich(`Keep your EXP and distance · <b>${ui.cont.left} / 2</b> revives left`, x, y, w, { size: 12.5, align: 'center', font: 'b', color: '#ffd6de' }) + 10;
+    // v3.0.11: the ad button only while HSGame has a revive ad ready (re-checked every frame — the
+    // countdown redraws the popup); otherwise a quiet "loading" line, never a dead button
+    if (hs.canShowAd('continue')) {
+      button(g, 'contad', x, y, w, 60, `${ICON.play} CONTINUE`, () => ui.h.continueAd(), { style: 'green', size: 24 });
+      if (!g.dry) {
+        const tw = g.measure('AD', { size: 11 }) + 30;
+        g.rr(x + w - tw - 12, y - 9, tw, 20, 8, '#11173a', '#ffd24a', 1);
+        g.rich(`${ICON.play} AD`, x + w - tw - 12, y - 6, tw, { size: 11, align: 'center', color: '#ffd24a' });
+      }
+    } else button(g, 'contad', x, y, w, 60, hs.hasAds() ? `${ICON.clock} Ad loading…` : `${ICON.info} No ad available`, () => {}, { style: 'ghost', disabled: true, size: 15 });
+    y += 70;
+    // countdown bar
+    const k = Math.max(0, Math.min(1, ui.cont.k));
+    g.rr(x, y, w, 12, 6, 'rgba(255,255,255,.12)');
+    if (k > 0) g.rr(x, y, Math.max(12, w * k), 12, 6, g.lin(x, 0, x + w, 0, [[0, '#ffd24a'], [1, '#ff6b7e']]));
+    g.text(String(Math.max(0, Math.ceil(ui.cont.sec))), x + w - 8, y + 6, { size: 10, align: 'right', noTr: true, shadow: null });
+    y += 24;
+    return navRow(g, x, y, w, [
+      ['c-retry', ICON.retry, 'Restart', 'gold', () => ui.h.retry()],
+      ['c-home', ICON.home, 'Home', 'dark', () => ui.h.home()],
+    ]);
   });
 }
 
@@ -480,10 +528,15 @@ function pauseOv(ui: UI, g: Gfx) {
     const items: [string, string, string, () => void, boolean][] = [
       ['p-sound', s?.settings.sound ? ICON.sound : ICON.soundOff, 'SFX', () => ui.h.toggleSound(), !!s?.settings.sound],
       ['p-music', s?.settings.music ? ICON.music : ICON.musicOff, 'MUSIC', () => ui.h.toggleMusic(), !!s?.settings.music],
-      ['p-q', ICON.gear, (ui.liveQuality ?? s?.settings.quality ?? 'high').toUpperCase(), () => ui.h.toggleQuality(), true],
+      // v5 (owner): short labels — "MEDIUM" did not fit and wrapped / shrank
+      ['p-q', ICON.gear, ({ low: 'LO', medium: 'MED', high: 'HI' } as Record<string, string>)[ui.liveQuality ?? s?.settings.quality ?? 'high'] ?? 'HI', () => ui.h.toggleQuality(), true],
     ];
     items.forEach(([k, ic, l, fn, on], i) => button(g, k, x + i * (tw + 8), y, tw, 46, l, fn, { style: on ? 'dark' : 'ghost', icon: ic, size: 15 }));
     y += 56;
+    // v5 (owner): Camera motion switch under the toggles
+    const cam = s?.settings.camMotion === true;
+    button(g, 'p-cam', x, y, w, 42, `🎥 Camera · <b>${cam ? 'ON' : 'OFF'}</b>`, () => ui.h.toggleCamMotion(), { style: cam ? 'dark' : 'ghost', size: 14 });
+    y += 52;
     button(g, 'resume', x, y, w, 60, `${ICON.play} Resume`, () => ui.h.resume(), { style: 'gold', size: 24 });
     y += 68;
     return navRow(g, x, y, w, [
@@ -567,7 +620,7 @@ function settingsOv(ui: UI, g: Gfx) {
       ['assist', ICON.info, 'Hint arrows', s.settings.assist !== false, () => ui.h.toggleAssist()],
       ['comfort', '◐', 'Eye comfort', s.settings.comfort !== false, () => ui.h.toggleComfort()],
       // v4.6: the race camera moves with the car (lanes, jumps, dives); off (default) = fixed view
-      ['cammotion', '🎥', 'Camera motion', s.settings.camMotion !== false, () => ui.h.toggleCamMotion()],
+      ['cammotion', '🎥', 'Camera motion', s.settings.camMotion === true, () => ui.h.toggleCamMotion()],
     ];
     const tw = (w - 8) / 2;
     tiles.forEach(([k, ic, l, on, fn], i) => {
@@ -576,7 +629,14 @@ function settingsOv(ui: UI, g: Gfx) {
       card(g, tx, ty, tw, 48, 12);
       if (ic.startsWith('<svg')) g.icon(ic, tx + 8, ty + 13, 22, C.cyan);
       else g.text(ic, tx + 19, ty + 24, { size: 16, align: 'center', color: C.cyan, noTr: true });
-      g.text(l, tx + 36, ty + 24, { size: 11.5, maxW: tw - 92 });
+      // v5: a long label ("Camera motion", translations) goes on two lines instead of shrinking
+      const lw = tw - 92;
+      const lt = getLang() === 'en' ? l : tr(l);
+      if (g.measure(lt, { size: 11.5, noTr: true }) > lw && lt.includes(' ')) {
+        const sp = lt.lastIndexOf(' ');
+        g.text(lt.slice(0, sp), tx + 36, ty + 17, { size: 11, maxW: lw, noTr: true });
+        g.text(lt.slice(sp + 1), tx + 36, ty + 31, { size: 11, maxW: lw, noTr: true });
+      } else g.text(l, tx + 36, ty + 24, { size: 11.5, maxW: lw });
       toggle(g, `s-${k}`, tx + tw - 54, ty + 11, on, fn);
     });
     // graphics LO / MED / HI (v4: three presets), full width under the switches

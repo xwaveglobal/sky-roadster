@@ -38,7 +38,7 @@ import { Ads, ADS } from './ads/Ads.ts';
 import { advancedScript, basicScript, boostScript, WORLD_LESSONS, type BoostKind, type TrainingScript, type TutorialStep } from './gameplay/Tutorial.ts';
 import { PASS_H, PASS_L, PASS_N } from './gameplay/types.ts';
 import { MAPS, TIER_NAME, type Tier } from './gameplay/Difficulty.ts';
-import { FAIRNESS, V2_POWERUPS, BONUS_SET, CLASS_REWARD, CLOUD, GRAPHICS, nextGraphics, type GraphicsQuality } from './config.ts';
+import { FAIRNESS, V2_POWERUPS, BONUS_SET, CALM, CLASS_REWARD, CLOUD, GRAPHICS, nextGraphics, type GraphicsQuality } from './config.ts';
 import { RANK_ORDER, rankDist, expRate, VARIANTS, type Variant } from './gameplay/Difficulty.ts';
 import type { Box, PickupKind, RowSpec } from './gameplay/types.ts';
 import { Meta, type EventResult, type RunSummary } from './meta/Meta.ts';
@@ -59,6 +59,7 @@ import { BonusTunnels } from './render/BonusTunnels.ts';
 import { drawShareCard, shareImage, copyText } from './ui/ShareCard.ts';
 import { ITEM_PRICE, UNLOCK_BOOSTS, V1_ITEM_PRICE, SPECIALS, type SpecialKey } from './meta/Daily.ts';
 import { dayKey } from './core/Save.ts';
+import { restartSpecial } from './meta/Restart.ts';
 import { platform } from './platform.ts';
 
 /**
@@ -84,6 +85,26 @@ function cleanName(n: string) {
 }
 
 const VERSION = 'v5.0.0';
+
+/**
+ * v5 (owner 2026-10-25) autoplay scenes for videos — web only, hidden (Settings → Autoplay shows only
+ * with ?demo in the URL). A scene runs in a sandbox session: the save is never written.
+ *   dumb    — plays a few dodges, then 1–2 s of hopeless moves → CRASHED!
+ *   genius  — HARD, rank AA: flawless through the tightest rows
+ *   aaa     — HARD: 10 minutes fast-forwarded, then the last seconds to rank AAA → board + promotion
+ *   special — a special item on its own stage (?sp=super|hyper|escape|ghost|wall|rail|tunnel|dash), ~15 s
+ */
+export type DemoKind = 'dumb' | 'genius' | 'aaa' | 'special';
+export const DEMO_SPECIALS = ['super', 'hyper', 'escape', 'ghost', 'wall', 'rail', 'tunnel', 'dash'] as const;
+const DEMO = (() => {
+  if (typeof location === 'undefined') return null;
+  const m = /[?&]demo=(dumb|genius|aaa|special)\b/.exec(location.search);
+  if (!m) return null;
+  const sp = /[?&]sp=(\w+)/.exec(location.search)?.[1] ?? 'super';
+  return { kind: m[1] as DemoKind, sp: ((DEMO_SPECIALS as readonly string[]).includes(sp) ? sp : 'super') as (typeof DEMO_SPECIALS)[number] };
+})();
+/** Settings shows the Autoplay row (hidden menu) */
+export const DEMO_MENU = typeof location !== 'undefined' && /[?&]demo\b/.test(location.search);
 /** coins for one Roadster Jump bought on the spot (training / blockade) */
 /** welcome-back gift after this many hours away */
 const WELCOME_AFTER_H = 12;
@@ -218,7 +239,6 @@ export class Game {
   // ---- monetisation (rewarded / interstitial)
   ads!: Ads;
   private continuesUsed = 0;
-  private nextBoost = false;
   private lastResult = { coins: 0, reward: 0, doubled: false };
   /** first-run pilot training */
   private bonusTunnels = new BonusTunnels();
@@ -390,11 +410,13 @@ export class Game {
       home: () => {
         const back = this.returnTo;
         this.returnTo = null;
-        // quitting a race half-way: the race ends and counts → its own result screen (never an old one)
-        if (this.state === 'paused' || this.state === 'run' || this.state === 'respawn' || this.state === 'continue') {
+        // v5 (owner): Home from a race (Pause / CRASHED!) goes straight Home — the race still ends and
+        // counts (EXP, coins, the weekly last-5 average), only the result screens are skipped
+        if (this.state === 'paused' || this.state === 'run' || this.state === 'respawn' || this.state === 'continue' || this.state === 'dying') {
           if (this.tutorialMode) return this.goHome();
           this.timeScale = this.timeScaleTarget = 1;
-          return this.gameOver();
+          this.gameOver(false);
+          return this.goHome();
         }
         if (this.state === 'countdown') return this.goHome();
         if (back) return back();
@@ -402,6 +424,9 @@ export class Game {
       },
       settings: () => this.openSettings(),
       closeModal: () => this.showHome(),
+      // v5: × on the rank board — straight Home, no interstitial
+      closeResults: () => this.goHome(),
+      demo: (kind, sp) => this.openDemo(kind as DemoKind, sp),
       daily: () => this.openDaily(),
       events: () => this.openBonus(),
       bonusGo: () => this.startBonus(),
@@ -509,7 +534,12 @@ export class Game {
       },
       pause: () => this.pause(),
       resume: () => this.resume(),
-      retry: () =>
+      retry: () => {
+        // v5 (owner): Restart from a race (Pause / CRASHED!) — the race ends and counts, then a new one at once
+        if (!this.tutorialMode && (this.state === 'paused' || this.state === 'run' || this.state === 'respawn' || this.state === 'continue' || this.state === 'dying')) {
+          this.timeScale = this.timeScaleTarget = 1;
+          this.gameOver(false);
+        }
         this.afterResults(() => {
           // Bonus roads: up to BONUS.maxPlays plays per event (Restart = another play while any are left)
           if (this.course?.bonus) {
@@ -518,16 +548,16 @@ export class Game {
             this.ui.toast(`${ICON.check} Bonus plays used · next one ${localTime(bs.next.start)}`, '#ffc21a');
             return this.goHome();
           }
-          // v2: every EXP race starts with the special choice (Retry too)
-          if (!this.course && !this.tutorialMode) return this.openSpecialPick(this.variant === 'track2' ? 'track2' : 'endless');
+          // v5 (owner): Restart goes straight into the race with the special picked automatically
+          if (!this.course && !this.tutorialMode) return this.restartRace();
           this.startRun();
-        }),
+        });
+      },
       continueAd: () => void this.continueByAd(),
       continueCoins: () => this.continueByCoins(),
       continueNo: () => this.gameOver(),
       adDouble: () => void this.adDouble(),
       adFreeCoins: () => void this.adFreeCoins(),
-      adBoost: () => void this.adBoost(),
       selectSkin: (id) => this.selectSkin(id),
       buySkin: (id) => this.buySkin(id),
       upgrade: (k) => this.buyUpgrade(k),
@@ -537,7 +567,7 @@ export class Game {
       toggleAssist: () => this.toggleAssist(),
       toggleComfort: () => this.toggleComfort(),
       toggleCamMotion: () => {
-        this.save.settings.camMotion = this.save.settings.camMotion === false; // v5: ON by default (undefined = on)
+        this.save.settings.camMotion = this.save.settings.camMotion !== true; // default OFF (owner 2026-10-25)
         this.rig.dynamic = this.save.settings.camMotion;
         this.vehicle.setCarSize(this.rig.dynamic ? 1 : RENDER.carScaleFixed / RENDER.carScale);
         this.persist();
@@ -562,7 +592,7 @@ export class Game {
 
     this.audio.setSfx(this.save.settings.sound);
     this.audio.setMusic(this.save.settings.music);
-    this.rig.dynamic = this.save.settings.camMotion !== false; // setting "Camera motion" — v5 (owner): default ON
+    this.rig.dynamic = this.save.settings.camMotion === true; // setting "Camera motion" — default OFF (owner 2026-10-25)
     this.vehicle.setCarSize(this.rig.dynamic ? 1 : RENDER.carScaleFixed / RENDER.carScale); // fixed view: a bit bigger
     this.migrateV2();
     // v4.6 (owner): the game always opens on NORMAL (a level picked on Home lasts for this session)
@@ -676,7 +706,8 @@ export class Game {
     const prevSeen = this.save.lastSeen;
     void this.seedDb();
     this.goHome();
-    window.setTimeout(() => this.launchPopups(prevSeen), 700);
+    if (DEMO) window.setTimeout(() => this.demoStart(), 1200);
+    else window.setTimeout(() => this.launchPopups(prevSeen), 700);
     this.clock.start();
     this.renderer.renderer.setAnimationLoop(() => this.frame());
   }
@@ -1338,15 +1369,15 @@ export class Game {
     this.rig.mode = 'menu';
     this.input.enabled = false;
     this.ui.tracksSync(this.save, this.meta.myCup()?.cup.track);
-    this.ui.adButton('adboost', this.nextBoost ? 'used' : 'ready', 'Head start ready for your next run');
     this.ui.show('tracks');
   }
 
   // =============================================================== ads
   /** Leaving a results screen is a natural break: maybe show an interstitial first. */
   private afterResults(next: () => void) {
-    // never an ad after training / practice
-    if (!this.save.noAds && !this.tutorialMode && (this.state === 'gameover' || (this.state === 'finish' && this.finishShown))) {
+    // v5 (owner): the interstitial only comes with Restart / Home on the weekly rank board (never after
+    // training, a Bonus finish, Pause or the CRASHED! panel)
+    if (!this.save.noAds && !this.tutorialMode && this.state === 'gameover' && this.ui.isShown('runrank')) {
       void this.ads.maybeInterstitial('between_runs', this.save.totalRuns).then(next);
     } else next();
   }
@@ -1417,13 +1448,20 @@ export class Game {
     if (this.lastResult.doubled) return;
     const ok = await this.ads.rewarded('double_coins');
     if (!ok) return;
-    const extra = Math.max(1, Math.round((this.lastResult.coins + this.lastResult.reward) * ADS.endBonus));
+    // v5 (owner): ×2 the race's coins when it earned ≥ 100, else a flat FREE +100
+    const extra = this.endAdExtra();
     this.lastResult.doubled = true;
     this.save.wallet += extra;
     this.persist();
     this.ui.adButton(this.state === 'finish' ? 'ad2xf' : 'ad2x', 'used', `+${extra} coins added`);
     this.ui.refreshProfile(this.save);
     this.audio.play('mission');
+  }
+
+  /** v5: what the rank-board ad gives for the last race (×2 its coins, or FREE +100) */
+  endAdExtra() {
+    const c = this.lastResult.coins + this.lastResult.reward;
+    return c >= ADS.doubleMin ? c : ADS.endFree;
   }
 
   private freeCoinsLeft() {
@@ -1445,15 +1483,6 @@ export class Game {
     this.ui.refreshProfile(this.save);
     this.ui.freeCoins(this.freeCoinsLeft(), ADS.freeCoinsAmount);
     this.ui.toast(`${ICON.coin} +${ADS.freeCoinsAmount} coins`, 'var(--gold)');
-    this.audio.play('power');
-  }
-
-  private async adBoost() {
-    if (this.nextBoost) return;
-    const ok = await this.ads.rewarded('head_start');
-    if (!ok) return;
-    this.nextBoost = true;
-    this.ui.adButton('adboost', 'used', 'Head start ready for your next run');
     this.audio.play('power');
   }
 
@@ -1645,6 +1674,17 @@ export class Game {
     this.ui.toast(`${POWER_ICON[k]} <b>MAGIC BAG: ${name.toUpperCase()} EQUIPPED</b>`, '#c24dff');
     return k;
   }
+  /** v5: the special a Restart takes (src/meta/Restart.ts) */
+  restartSpecial(): SpecialKey | null {
+    return restartSpecial(this.save.items, this.save.lastSpecial, this.save.special);
+  }
+  private restartRace() {
+    this.pickTrackId = this.variant === 'track2' ? 'track2' : 'endless';
+    const k = this.restartSpecial();
+    this.save.special = k;
+    this.persist();
+    this.goRace(false);
+  }
   private pickLabel() {
     return `${this.pickTrackId === 'track2' ? 'Mega Rush' : 'Endless'} · ${LEVELS[this.save.settings.speed].label}`;
   }
@@ -1657,6 +1697,7 @@ export class Game {
       return this.ui.showOverlay('bagbuy');
     }
     this.save.special = key;
+    this.save.lastSpecial = key; // v5: Restart reuses the player's last pick
     this.persist();
     this.audio.play('click');
     if (this.bagPickMode) {
@@ -1687,7 +1728,9 @@ export class Game {
     if (this.ui.isShown('shop')) this.ui.shopSync(this.save);
     this.ui.refreshProfile(this.save);
   }
-  private goRace() {
+  private goRace(fromPick = true) {
+    // the special on the pick screen at GO is the player's pick (Restart reuses it, v5)
+    if (fromPick) this.save.lastSpecial = this.save.special ?? null;
     this.ui.hideOverlay('specialpick');
     this.startTrack(this.pickTrackId);
   }
@@ -1935,8 +1978,10 @@ export class Game {
     const level = this.runLevel;
     // test shortcut: ?rank=B starts Endless just before the B rank gate (that run's EXP is not saved)
     const want = !this.course && !this.tutorialMode ? /[?&]rank=(C|B|A|AA|AAA|S|SS|SSS)\b/.exec(location.search)?.[1] : undefined;
-    const startDist = want ? Math.max(0, rankDist(RANK_ORDER.indexOf(want as (typeof RANK_ORDER)[number]), level, this.variant) - 2600) : 0;
-    this.debugStart = startDist > 0;
+    let startDist = want ? Math.max(0, rankDist(RANK_ORDER.indexOf(want as (typeof RANK_ORDER)[number]), level, this.variant) - 2600) : 0;
+    // v5 autoplay "Road to AAA": the long race is fast-forwarded — it starts ~10 s before the AAA gate
+    if (DEMO?.kind === 'aaa' && !this.course && !this.tutorialMode) startDist = Math.max(0, rankDist(RANK_ORDER.indexOf('AAA'), level, this.variant) - 650);
+    this.debugStart = startDist > 0 && !DEMO; // (an autoplay scene counts on screen — it never saves)
     this.world.reset(Math.floor(Math.random() * 1e9), this.course, level, startDist, this.course || this.tutorialMode ? 'endless' : this.variant);
     this.bonusTunnels.set(this.course?.bonus ? this.world.spawner.tunnels() : [], this.course?.bonus ? this.course.world : null);
     this.tutStep = 0;
@@ -1962,14 +2007,6 @@ export class Game {
     this.superFlight = false;
     this.blockade = null;
     this.nextBlockadeAt = 420;
-    if (this.nextBoost && !this.tutorialMode) {
-      this.nextBoost = false;
-      this.run.shield = true;
-      this.run.shieldHits = SHIELD_HITS;
-      this.run.shieldT = this.run.durations().shield;
-      this.run.superJumps = 1;
-      window.setTimeout(() => this.ui.toast(`${ICON.rocket} HEAD START · Shield + Roadster Jump`, '#9b6bff'), 2900);
-    }
     // v2: ONE special per race, picked before the start; it leaves the Magic Bag only when it is used
     this.carried = null;
     this.showcaseK = null;
@@ -2546,6 +2583,7 @@ export class Game {
     else this.speedScale = 1;
 
     if (this.autopilot && this.state === 'run') this.autopilot.update(w, dt, (a) => p.input(a));
+    if (this.demo && this.state === 'run') this.demoUpdate(dt);
 
     // ---- fixed sub-steps for precise collision at high speed
     const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
@@ -2554,7 +2592,7 @@ export class Game {
     // hovering, a bounded extension if the landing spot is briefly blocked
     const dashSafe = this.airDashGuard.update(p, w.obstacles, w.speed * this.speedScale, dt);
     const opts = {
-      invulnerable: this.state !== 'run' || run.invulnerable || dashSafe || (this.tutorialMode && !this.tut.vulnerable),
+      invulnerable: this.state !== 'run' || run.invulnerable || dashSafe || (this.tutorialMode && !this.tut.vulnerable) || this.demoSafe,
       // Bonus showcase specials ride the wall / the sky / the roof: obstacles they pass break apart,
       // and coins on the road fly up to the car (it is not down in the lane any more)
       smash: run.turboT > 0 || (!!this.showcaseK && this.showcaseK !== 'ghost'),
@@ -2689,9 +2727,9 @@ export class Game {
 
     // ---- track mode: gates, sections, finish line
     const c = this.course;
+    this.bonusTunnels.update(w.dist); // Bonus roads + the autoplay Tunnel Rider stage
     if (c) {
       if (this.state === 'run' || this.state === 'respawn') this.runTime += dt;
-      this.bonusTunnels.update(w.dist);
       this.startArch.position.z = -(14 - w.dist);
       this.startArch.visible = w.dist < 40;
       this.finishArch.position.z = -(c.length - w.dist);
@@ -2847,7 +2885,7 @@ export class Game {
       switch (f.t) {
         case 'coin': {
           this.audio.play('coin');
-          this.particles.burst(f.x, f.y, 0, 6, 0xffd23d, 4, 0.25, 0.3, { drag: 4 });
+          this.particles.burst(f.x, f.y, 0, CALM.coin.burst, 0xffd23d, CALM.coin.burstSize, 0.25, 0.3, { drag: 4 }); // v5: calmer coin pickup
           const s = this.toScreen(f.x, f.y, f.z);
           if (s) this.ui.flyTo(s.x, s.y, ICON.coin, 'coins', 70);
           break;
@@ -2866,6 +2904,7 @@ export class Game {
           this.ui.bigPickup(POWER_LABEL[k], '#' + POWER_COLORS[k].toString(16).padStart(6, '0'), POWER_ICON[k], k === 'shield' ? `blocks ${SHIELD_HITS} hits` : POWER_SUB[k]);
           if (k !== 'turbo') this.vibrate(14);
           this.autoSpecial(k);
+          if (this.demo?.kind === 'special') this.demoPicked(k);
           this.vehicle.pickupSweep(POWER_COLORS[k]); // 3D car: short light sweep in the item's colour
           if (k === 'turbo') {
             this.vibrate([40, 30, 40]);
@@ -3239,7 +3278,8 @@ export class Game {
     this.ads.runEnded();
   }
 
-  private gameOver() {
+  /** @param show false = the race ends and counts (EXP, coins, rank) but no result screen (Restart / Home from a race) */
+  private gameOver(show = true) {
     this.holdContinue = false;
     this.returnTo = null;
     const run = this.run;
@@ -3269,11 +3309,16 @@ export class Game {
       const pct = Math.max(1, Math.ceil((r / wb.total) * 100));
       pos = r <= 999 ? `#${r.toLocaleString('en-US')} this week` : pct <= 50 ? `Top ${pct}% this week` : ''; // a weak run shows no position
     }
+    if (!show) {
+      this.ads.runEnded();
+      return;
+    }
     this.ui.gameOver({ score: isBonus ? run.coins : run.exp, best: this.variant === 'track2' ? this.save.exp2Best : this.save.expBest, isBest: !!rewards && rewards.exp > 0 && rewards.to > rewards.from, dist: run.distance, length: this.course?.length, coins: run.coins, near: run.nearMiss, missions: this.runMissionsDone, rewards, speedBonus, level: lvg.label, tip: this.lastTip, runRank: isBonus || run.expRate <= 0 ? null : this.runRank, pos, car: this.save.vehicle, bonus: isBonus });
     if (!isBonus) window.setTimeout(() => void this.prepareCard(true), 400); // ready before the Share tap
-    this.lastResult = { coins: run.coins, reward: 0, doubled: false };
-    this.ui.adButton('ad2x', run.coins > 0 ? 'ready' : 'used', 'No coins to double');
-    this.ui.hideEl('ad2x', run.coins <= 0); // nothing to double → no button
+    this.lastResult = { coins: run.coins + speedBonus, reward: 0, doubled: false };
+    // v5 (owner): the coin ad lives on the rank board (×2 / FREE +100) — the result card has none
+    this.ui.adButton('ad2x', 'used', '');
+    this.ui.hideEl('ad2x', true);
     this.ads.runEnded();
     this.ui.show('gameover');
     if (rewards && rewards.to > rewards.from) this.audio.play('mission');
@@ -3281,8 +3326,20 @@ export class Game {
     if (!isBonusRun && !this.tutorialMode) {
       const board = this.meta.weekly();
       const clsUp = rewards && rewards.clsAfter !== rewards.clsBefore ? rewards.clsAfter : null;
-      this.ui.runRank({ before: wkBefore, board, rows: aroundYou(board, 2), clsUp });
-      if (board.you.rank < wkBefore) window.setTimeout(() => this.audio.play('combo'), 1500);
+      // v5 (owner mock-up): RANK UP! — 2 rivals above, the player, 1 below (the row climbs from "from #old"
+      // under them); RACE OVER — 3 rivals above the player (the row slides down from "from #old" on top)
+      const up = board.you.score > 0 && board.you.rank < wkBefore;
+      const c = this.lastResult.coins;
+      this.ui.runRank({
+        before: wkBefore,
+        board,
+        rows: up ? aroundYou(board, 2, 1) : aroundYou(board, 3, 0),
+        clsUp,
+        thisRace: Math.floor(run.exp),
+        best: this.variant === 'track2' ? this.save.exp2Best : this.save.expBest,
+        ad: { extra: this.endAdExtra(), double: c >= ADS.doubleMin, can: ADS.enabled },
+      });
+      if (up) window.setTimeout(() => this.audio.play('combo'), 1500);
     }
   }
 
@@ -3436,6 +3493,7 @@ export class Game {
 
   // =============================================================== profile
   private persist() {
+    if (DEMO) return; // autoplay scenes run in a sandbox: the real save is never touched
     this.save.missions.active = this.missions.active.map((a) => ({ id: a.id, progress: a.progress }));
     this.save.missions.completed = this.missions.completed;
     this.save.lastSeen = Date.now();
@@ -3776,6 +3834,141 @@ export class Game {
 
   /** Test hook: base speed for a distance (exposed for tooling). */
   static speedAt = speedAt;
+
+  // =============================================================== v5 autoplay scenes (videos)
+  private demo: { kind: DemoKind; sp: string; t: number; phase: number; fired: boolean } | null = null;
+  /** no collisions (the scene's pilot is flawless) — no shield bubble, nothing drawn */
+  private demoSafe = false;
+  private demoPilot = new Autopilot();
+  private demoT = 0;
+  private demoEndAt = 0;
+  private demoStart() {
+    if (!DEMO) return;
+    const s = this.save;
+    s.tutorialDone = true;
+    s.settings.speed = DEMO.kind === 'genius' || DEMO.kind === 'aaa' ? 'hard' : 'normal';
+    // the rank the scene needs (this session only — nothing is saved)
+    if (DEMO.kind === 'genius') s.expBest = Math.max(s.expBest, CLASS_MIN.AA + 600);
+    if (DEMO.kind === 'aaa') s.expBest = CLASS_MIN.AA + 2000;
+    // only the scene's own promotion (AAA) may pop up — the classes below count as seen
+    s.classCelebrated = CLASSES.slice(0, rankIdx(DEMO.kind === 'aaa' ? 'AA' : 'SSS') + 1).map(String);
+    s.special = null;
+    this.demo = { kind: DEMO.kind, sp: DEMO.sp, t: 0, phase: 0, fired: false };
+    this.demoSafe = DEMO.kind !== 'dumb';
+    this.pickTrackId = 'endless';
+    this.ui.closePopup();
+    this.goRace(false);
+  }
+  private demoUpdate(dt: number) {
+    const d = this.demo!;
+    const w = this.world;
+    const p = w.player;
+    const run = this.run;
+    d.t += dt;
+    if (d.kind === 'dumb') {
+      if (d.phase === 0) {
+        this.demoPilot.update(w, dt, (a) => p.input(a));
+        if (d.t > 3.2) {
+          d.phase = 1;
+          run.lives = 0; // the crash that follows ends the race (→ CRASHED!)
+          run.superJumps = run.hyperJumps = run.escapes = 0;
+        }
+        return;
+      }
+      // hopeless driving: steer INTO the next row's blocked lane, swerving back and forth
+      this.demoT -= dt;
+      if (this.demoT > 0) return;
+      this.demoT = 0.35;
+      const row = w.upcoming.find((r) => r.dist > w.dist + 4);
+      if (!row) return;
+      const blocked = [0, 1, 2].filter((l) => !(row.masks[l] & PASS_N));
+      const target = blocked.includes(p.lane) ? p.lane : (blocked[0] ?? (p.lane === 1 ? 0 : 1));
+      if (target < p.lane) p.input('left');
+      else if (target > p.lane) p.input('right');
+      return;
+    }
+    if (d.kind === 'genius') {
+      this.demoPilot.update(w, dt, (a) => p.input(a));
+      return;
+    }
+    if (d.kind === 'aaa') {
+      this.demoPilot.update(w, dt, (a) => p.input(a));
+      if (d.phase === 0) {
+        d.phase = 1;
+        this.demoFastForward();
+        return;
+      }
+      if (d.phase === 2 && run.exp >= CLASS_MIN.AAA) {
+        d.phase = 3;
+        d.t = 0;
+        this.ui.toast(`${ICON.trophy} <b>RANK AAA REACHED!</b>`, CLASS_COLOR.AAA);
+      }
+      if (d.phase === 3 && d.t > 2.2) {
+        d.phase = 4;
+        this.gameOver(); // the weekly board + the first-time AAA promotion
+      }
+      return;
+    }
+    // special: drive, then put the chosen item on its own stage
+    if (!this.superFlight && !p.isAirDash) this.demoPilot.update(w, dt, (a) => p.input(a));
+    if (d.phase === 0 && d.t > 2.2) this.demoStage(d.sp);
+    if (d.phase === 2 && w.dist > this.demoEndAt) {
+      d.phase = 3;
+      this.demoEnd();
+    }
+  }
+  /** clear the road and place the chosen special right in front of the car */
+  private demoStage(kind: string) {
+    const w = this.world;
+    w.clearAhead(320);
+    for (const pk of [...w.pickups]) if (pk.spec.kind !== 'coin') this.pickupViews.despawn(pk);
+    w.pickups = w.pickups.filter((pk) => pk.spec.kind === 'coin');
+    const sp = w.spawner;
+    sp.scripted = true;
+    sp.rows.length = 0;
+    sp.pickups.length = 0;
+    this.nextBlockadeAt = w.dist + 5000;
+    const lane = kind === 'dash' ? (w.player.lane === 2 ? 2 : 0) : w.player.lane;
+    const at = w.dist + 60;
+    for (let k = 4; k >= 1; k--) sp.pickups.push({ kind: 'coin', lane, dist: at - k * 5, y: HEIGHT.NORMAL });
+    sp.pickups.push({ kind: kind as PickupKind, lane, dist: at, y: HEIGHT.NORMAL });
+    // Tunnel Rider needs its tunnel: the Bonus road's tunnel scenery, built right after the pickup
+    if (kind === 'tunnel') this.bonusTunnels.set([{ from: at + BONUS_SET.lead, to: at + BONUS_SET.lead + BONUS_SET.tunnelLen * 0.6 }], 'sea');
+    this.demoEndAt = at + 260;
+    this.demo!.phase = 2;
+  }
+  /** the chosen special was picked up: build its set piece (the special fires by itself just before it) */
+  private demoPicked(k: PickupKind) {
+    const d = this.demo!;
+    if (d.fired || k !== d.sp || k === 'dash') return;
+    d.fired = true;
+    const w = this.world;
+    const from = w.dist + BONUS_SET.lead;
+    const len = k === 'tunnel' ? BONUS_SET.tunnelLen * 0.6 : (BONUS_SET.len[k] ?? 40);
+    const piece = { kind: k, pick: w.dist, from, to: from + len, filled: true };
+    w.injectRows(w.spawner.buildSetPiece(piece));
+    if (k === 'escape') this.run.escapes = Math.max(1, this.run.escapes);
+    this.setPiece = piece;
+    const msg: Record<string, string> = { super: 'CAR WALL AHEAD', hyper: 'TRUCK CONVOY AHEAD', escape: 'TRAFFIC JAM AHEAD', wall: 'ROAD BLOCKED AHEAD', rail: 'BUSY STRETCH AHEAD', ghost: 'LASER ZONE AHEAD', tunnel: 'TUNNEL AHEAD' };
+    this.ui.toast(`${ICON.rocket} ${msg[k] ?? 'SPECIAL'} · it fires by itself!`, '#9b6bff');
+    this.demoEndAt = piece.to + 60;
+  }
+  /** "Road to AAA": the race starts far down the road (startRun) — this only says so on screen */
+  private demoFastForward() {
+    const r = this.run;
+    const mins = Math.max(1, Math.round(r.distance / Math.max(1, this.world.speed) / 60));
+    this.ui.toast(`${ICON.clock} <b>FAST-FORWARD · ${mins >= 10 ? mins : 10} MIN</b> · ${(r.distance / 1000).toFixed(1)} km`, '#4fc3ff');
+    this.demo!.phase = 2;
+  }
+
+  /** v5 Settings → Autoplay: open a scene (reloads the page into its sandbox session) */
+  openDemo(kind: DemoKind, sp?: string) {
+    const q = new URLSearchParams(location.search);
+    q.set('demo', kind);
+    if (sp) q.set('sp', sp);
+    else q.delete('sp');
+    location.search = `?${q.toString()}`;
+  }
 
   /**
    * Capture/demo hook (used to record the Roadster Jump guide video): clears the road

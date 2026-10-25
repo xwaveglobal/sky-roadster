@@ -7,7 +7,7 @@ import type { BonusWorld, LadderWorld } from '../gameplay/Spawner.ts';
 import { wrapZ } from './Track.ts';
 import { bakeVertexColors } from './merge.ts';
 import { addFarFade } from './envFx.ts';
-import type { GraphicsPreset } from '../config.ts';
+import { CALM, type GraphicsPreset } from '../config.ts';
 
 const NEAR = 40;
 
@@ -122,7 +122,7 @@ class BuildingField {
     private rng: Rng,
     winSeed: number,
     private yBase = -24,
-    glow = 0.62,
+    glow = CALM.windowGlow,
   ) {
     const geo = new THREE.BoxGeometry(1, 1, 1);
     geo.translate(0, 0.5, 0);
@@ -178,7 +178,7 @@ class BuildingField {
     this.neon = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1), mat, this.n * 2);
     this.neon.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
     this.neon.frustumCulled = false;
-    for (let i = 0; i < this.n * 2; i++) this.neon.setColorAt(i, this.c.setHex(colors[(i * 7 + (i >> 1)) % colors.length]).multiplyScalar(0.85));
+    for (let i = 0; i < this.n * 2; i++) this.neon.setColorAt(i, this.c.setHex(colors[(i * 7 + (i >> 1)) % colors.length]).multiplyScalar(CALM.neon));
     addFarFade(mat, NEAR - this.range);
     return this.neon;
   }
@@ -327,7 +327,7 @@ function makeBillboard(variant: number, spawnZ: number, w = 9, h = 4.5) {
   const panelMat =
     variant < 0
       ? bbMat('xwave', () => new THREE.MeshBasicMaterial({ color: 0x0b1024 }), spawnZ)
-      : bbMat(`bb${variant}`, () => new THREE.MeshBasicMaterial({ map: billboardTexture(variant), color: 0xa8a8a8 }), spawnZ);
+      : bbMat(`bb${variant}`, () => new THREE.MeshBasicMaterial({ map: billboardTexture(variant), color: CALM.billboardTint }), spawnZ);
   const panel = new THREE.Mesh(new THREE.PlaneGeometry(w, h), panelMat);
   g.add(panel);
   if (variant < 0) {
@@ -431,7 +431,7 @@ function buildCity(mega: boolean): Theme {
   const pal = mega ? [0x2b3260, 0x3b3f78, 0x5a4a2a, 0x23284a, 0x8a7a50] : [0x2a3150, 0x3a3f66, 0x242a40, 0x4a3f6a, 0x2f3a5a];
   const near = new BuildingField(mega ? 54 : 40, 340, 14, 34, mega ? 30 : 18, mega ? 110 : 70, pal, rng, mega ? 3 : 1);
   // far field: windows dimmer than the near one (depth: the city fades into the haze)
-  const far = new BuildingField(mega ? 60 : 50, 420, 40, 140, mega ? 60 : 30, mega ? 200 : 140, pal, rng, 2, -40, 0.42);
+  const far = new BuildingField(mega ? 60 : 50, 420, 40, 140, mega ? 60 : 30, mega ? 200 : 140, pal, rng, 2, -40, CALM.windowGlow * 0.68); // v5: far windows dimmer in step with the near ones
   group.add(near.mesh, far.mesh, near.crowns, far.crowns);
   // v4.2 mid layer: neon edges on the road-facing side of the near buildings; far layer: city lights
   const neon = near.addNeon(mega ? [0xffc21a, 0xff7a3a, 0x5ad1ff, 0xffe08a] : [0x39b6ff, 0xff4fd8, 0x8a6bff, 0x5ee6ff, 0xff8a3a]);
@@ -441,7 +441,7 @@ function buildCity(mega: boolean): Theme {
 
   const sc = new Scroller(320);
   let lastBb = -2;
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < CALM.billboards; i++) {
     const side = i % 2 ? 1 : -1;
     // v4.2.1: 8 artworks + the XWAVE board, never the same one twice in a row
     let v = i % 3 === 0 ? -1 : rng.int(0, 7);
@@ -451,7 +451,7 @@ function buildCity(mega: boolean): Theme {
     bb.position.set(side * rng.range(11, 15), rng.range(7, 18), 0);
     bb.rotation.y = side * -0.95;
     group.add(bb);
-    sc.add(bb, i * 32 + rng.range(0, 10));
+    sc.add(bb, i * (320 / CALM.billboards) + rng.range(0, 10)); // v5: fewer boards, evenly spread
   }
   // flying traffic lanes in the background (instanced: 1 mesh + 1 Points)
   const traffic = new SkyTraffic(rng, 22);

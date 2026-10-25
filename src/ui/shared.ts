@@ -36,3 +36,16 @@ export const upgradeCost = (lvl: number) => Math.round(150 * Math.pow(lvl + 1, 1
 export const SAMPLE_BOARD_NOTE = true;
 
 export const MEGA_ICON = `<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6.5" y="2.5" width="11" height="19" rx="2.6" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M12 6.2c1.7 1.2 2.4 3 2.2 5.4l-.9.9h-2.6l-.9-.9c-.2-2.4.5-4.2 2.2-5.4z" fill="#fff"/><circle cx="12" cy="9.3" r=".9" fill="#2a7bff"/><path d="M10.6 13.2 12 16.4l1.4-3.2z" fill="#ffc21a"/><path d="M10.4 18.6h3.2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+
+/** v5 post-race weekly rank board (owner mock-up): RANK UP! / RACE OVER, card, rows, one coin ad, Details · Restart · Home */
+export interface RunRankData {
+  before: number;
+  board: import('../meta/Leaderboard.ts').Board;
+  rows: import('../meta/Leaderboard.ts').LbRow[];
+  clsUp: import('../meta/Rank.ts').RankClass | null;
+  /** EXP of this race and the best single race (the class comes from the best) */
+  thisRace: number;
+  best: number;
+  /** the coin ad: `extra` coins; double = ×2 of the race's coins, else FREE +100 */
+  ad: { extra: number; double: boolean; can: boolean };
+}

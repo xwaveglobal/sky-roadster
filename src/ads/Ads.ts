@@ -10,7 +10,7 @@
  * Placements and frequency rules live in ADS (config below) — tune there.
  */
 
-export type RewardPlacement = 'continue' | 'double_coins' | 'free_coins' | 'head_start';
+export type RewardPlacement = 'continue' | 'double_coins' | 'free_coins'; // v5: head start ad removed (owner)
 export type InterPlacement = 'between_runs';
 
 export const ADS = {
@@ -26,6 +26,9 @@ export const ADS = {
   freeCoinsPerDay: 5,
   /** v2.2 end-screen ad: +this share of the race's coins (not ×2) */
   endBonus: 0.2,
+  /** v5 (owner) rank-board ad: a race with at least `doubleMin` coins gets them again (×2); below that, FREE +`endFree` */
+  doubleMin: 100,
+  endFree: 100,
   freeCoinsAmount: 100,
   /** v1 only — v2 revives are by rewarded ad only (docs/GAME-DESIGN.md §6) */
   continueCoinCost: 300,

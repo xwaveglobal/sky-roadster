@@ -452,6 +452,38 @@ export const CAMERA = {
  * identical on every preset. MEDIUM is the starting preset until device benchmarks exist; a device
  * that cannot hold ~42 fps steps down on its own (resolution → bloom → LOW, session only).
  */
+/**
+ * v5 (owner 2026-10-25): a calmer picture — coins glint less when picked up, the roadside flashes less
+ * and carries less detail (fewer wall posts / billboards, softer lamps, windows and neon) so long
+ * races do not tire the eyes. Visual only.
+ */
+/**
+ * v5 (owner 2026-10-25, "cách 1"): the weekly rank score is the AVERAGE EXP of the player's last
+ * `lastRuns` EXP races this week — every race moves the weekly rank up or down. The class (D … SSS)
+ * still comes from the best single race and never drops. Bots follow the same rule
+ * (src/meta/Leaderboard.ts); the server re-computes it from verified runs (server/core.mjs RANK_RUNS).
+ */
+export const RANKING = { lastRuns: 5 };
+
+export const CALM = {
+  coin: { glowOpacity: 0.16, capEmissive: 0.22, sideEmissive: 0.14, burst: 3, burstSize: 3 },
+  /** wall posts every n metres (was 4: posts strobing past the screen edge) */
+  wallRib: 12,
+  /** top / mid light strip of the roadside wall (0 … 1) */
+  wallStrip: 0.45,
+  wallMidStrip: 0,
+  /** lamp-head glow sprites */
+  lampGlow: { opacity: 0.32, size: 1.8 },
+  /** rail / side glow strips: share of the world accent colour (they are drawn un-tone-mapped = very bright) */
+  railGlow: 0.55,
+  /** building windows emissive (was 0.62), roof / corner neon brightness (was 0.85) */
+  windowGlow: 0.42,
+  neon: 0.45,
+  /** roadside billboards (was 10) and their brightness */
+  billboards: 6,
+  billboardTint: 0x8c8c8c,
+};
+
 export type GraphicsQuality = 'low' | 'medium' | 'high';
 export interface GraphicsPreset {
   /** max device pixel ratio */

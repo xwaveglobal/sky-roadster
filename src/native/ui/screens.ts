@@ -244,10 +244,11 @@ function start(ui: UI, g: Gfx) {
     g.rr(x, y, mw, mh, 12, g.lin(0, y, 0, y + mh, [[0, c[0]], [1, c[1]]]), 'rgba(255,255,255,.22)', 1);
     if (g.isPressed(key)) g.rr(x, y, mw, mh, 12, 'rgba(255,255,255,.18)');
     const lab = label.toUpperCase();
-    const tw = Math.min(g.measure(lab, { size: 12, font: 'b', weight: 900 }), mw - 40);
-    const cx = x + (mw - (tw + 24)) / 2;
+    // v5 (owner): a clear gap between the icon and the label
+    const tw = Math.min(g.measure(lab, { size: 12, font: 'b', weight: 900 }), mw - 46);
+    const cx = x + (mw - (tw + 28)) / 2;
     g.icon(icon, cx, y + mh / 2 - 9, 18, ic);
-    g.text(lab, cx + 24, y + mh / 2 + 0.5, { size: 12, maxW: mw - 40, font: 'b', weight: 900 });
+    g.text(lab, cx + 28, y + mh / 2 + 0.5, { size: 12, maxW: mw - 46, font: 'b', weight: 900 });
     g.hit(x, y - 2, mw, mh + 4, key, fn);
   };
   mini(0, 'garage', CAR_LINE, 'Garage', () => ui.h.garage(), ['#1b2e6e', '#0d1a48']);

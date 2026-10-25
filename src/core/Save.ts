@@ -21,7 +21,7 @@ export interface SaveData {
   unlocked: string[];
   upgrades: { engine: number; shield: number; magnet: number };
   missions: { active: { id: string; progress: number }[]; completed: number; rank: number };
-  settings: { sound: boolean; music: boolean; quality: 'high' | 'medium' | 'low'; gfx3?: boolean; speed: 'easy' | 'normal' | 'hard'; assist?: boolean; comfort?: boolean; autoClaim?: boolean; vibrate?: boolean; lang?: string; /** "Camera motion": race camera moves with the car — v5: unset = ON; false = fixed view */ camMotion?: boolean };
+  settings: { sound: boolean; music: boolean; quality: 'high' | 'medium' | 'low'; gfx3?: boolean; speed: 'easy' | 'normal' | 'hard'; assist?: boolean; comfort?: boolean; autoClaim?: boolean; vibrate?: boolean; lang?: string; /** "Camera motion": race camera moves with the car — unset / false = fixed view (default OFF) */ camMotion?: boolean; /** v5: the HI / Camera-motion-ON defaults were applied once */ v5defaults?: boolean };
   /** rewarded "free coins": day key + how many claimed that day */
   adFreeDay?: string;
   adFreeCount?: number;
@@ -52,6 +52,8 @@ export interface SaveData {
   expBest: number;
   /** v2: best run EXP this week (weekly board) */
   expWeek: number;
+  /** v5: EXP of the last races this week (the weekly rank score is their average — src/meta/RankScore.ts) */
+  weekRuns?: number[];
   /** v2: best run EXP on Track 2 (the only road to S / SS / SSS) */
   exp2Best: number;
   /** v2: old save already converted (retired items/upgrades refunded as coins) */
@@ -60,6 +62,8 @@ export interface SaveData {
   carsRelocked?: boolean;
   /** v2: special picked for the next race (one per race) */
   special?: 'super' | 'hyper' | 'escape' | null;
+  /** v5: the special the player picked last (Restart reuses it; null = raced without one on purpose) */
+  lastSpecial?: 'super' | 'hyper' | 'escape' | null;
   /** mission rewards waiting for a manual claim (auto-claim off) */
   pendingMissions: { text: string; reward: number }[];
   /** Step 06.5: classes (A and up) whose first-promotion celebration the player has acknowledged */
@@ -125,12 +129,13 @@ const defaults = (): SaveData => ({
   settings: {
     sound: true,
     music: true,
-    quality: 'medium', // v4.2: MEDIUM until device benchmarks exist (a slow device still steps down)
+    quality: 'high', // v5 (owner): HIGH by default (a slow device still steps down for that session only)
     gfx3: true,
     speed: 'normal',
     assist: true,
     comfort: true,
     autoClaim: true,
+    v5defaults: true,
   },
   settingsRev: SETTINGS_REV,
   track: 'future-city',
@@ -216,6 +221,13 @@ function loadSaveRaw(): SaveData {
     if (p.settings && !p.settings.gfx3) {
       if (p.settings.quality === 'high') p.settings.quality = 'medium';
       p.settings.gfx3 = true;
+    }
+    // v5 (owner 2026-10-25): graphics HI and Camera motion OFF as the defaults — applied once to every
+    // existing save (v4.2's default MEDIUM becomes HIGH; a LOW the player picked stays LOW); later choices are kept
+    if (p.settings && !p.settings.v5defaults) {
+      if (p.settings.quality !== 'low') p.settings.quality = 'high';
+      delete p.settings.camMotion;
+      p.settings.v5defaults = true;
     }
     return {
       ...d,

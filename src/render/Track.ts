@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { glowTexture, logoTexture } from './textures.ts';
-import { GRAPHICS, ROAD, type GraphicsPreset } from '../config.ts';
+import { CALM, GRAPHICS, ROAD, type GraphicsPreset } from '../config.ts';
 import { roadPixels, type RoadPixels } from './roadSurface.ts';
 import { addFarFade, wrapZ } from './envFx.ts';
 
@@ -35,7 +35,7 @@ function dataTex(data: Uint8Array, w: number, h: number, srgb: boolean) {
   return t;
 }
 /** side wall: post spacing (m) and height (m) */
-const WALL_RIB = 4;
+const WALL_RIB = CALM.wallRib;
 const WALL_H = 1.25;
 const tmpWhite = new THREE.Color(0xffffff);
 
@@ -206,14 +206,16 @@ export class Track {
       grd.addColorStop(1, 'rgba(8,14,30,0.78)');
       w.fillStyle = grd;
       w.fillRect(0, 0, 128, 64);
-      w.fillStyle = 'rgba(255,255,255,0.95)'; // top light strip
+      w.fillStyle = `rgba(255,255,255,${CALM.wallStrip})`; // top light strip (v5: softer)
       w.fillRect(0, 2, 128, 4);
-      w.fillStyle = 'rgba(255,255,255,0.35)'; // mid dashed strip
-      w.fillRect(18, 34, 90, 2);
-      w.fillStyle = '#1b2234'; // steel post
-      w.fillRect(0, 0, 12, 64);
-      w.fillStyle = '#8a97b3';
-      w.fillRect(2, 0, 3, 64);
+      if (CALM.wallMidStrip > 0) {
+        w.fillStyle = `rgba(255,255,255,${CALM.wallMidStrip})`; // mid dashed strip
+        w.fillRect(18, 34, 90, 2);
+      }
+      w.fillStyle = '#1b2234'; // steel post (v5: thinner, low-contrast edge — no strobing)
+      w.fillRect(0, 0, 6, 64);
+      w.fillStyle = '#4a5674';
+      w.fillRect(1, 0, 2, 64);
       const wallTex = new THREE.CanvasTexture(wc);
       wallTex.colorSpace = THREE.SRGBColorSpace;
       wallTex.wrapS = THREE.RepeatWrapping;
@@ -260,7 +262,7 @@ export class Track {
     glowGeo.setAttribute('position', new THREE.BufferAttribute(glowPos, 3).setUsage(THREE.DynamicDrawUsage));
     this.lampGlows = new THREE.Points(
       glowGeo,
-      new THREE.PointsMaterial({ map: glowTexture(), color: 0x9fdcff, size: 2.4, sizeAttenuation: true, transparent: true, opacity: 0.65, blending: THREE.AdditiveBlending, depthWrite: false }),
+      new THREE.PointsMaterial({ map: glowTexture(), color: 0x9fdcff, size: CALM.lampGlow.size, sizeAttenuation: true, transparent: true, opacity: CALM.lampGlow.opacity, blending: THREE.AdditiveBlending, depthWrite: false }),
     );
     this.lampGlows.frustumCulled = false;
     this.group.add(this.lampGlows);
@@ -368,9 +370,9 @@ export class Track {
 
   setAccent(c: THREE.Color) {
     this.accent.copy(c);
-    this.railGlowMat.color.copy(c);
+    this.railGlowMat.color.copy(c).multiplyScalar(CALM.railGlow);
     this.ringMat.color.copy(c);
-    this.sideGlowMat.color.copy(c);
+    this.sideGlowMat.color.copy(c).multiplyScalar(CALM.railGlow);
     // walls take a light tint of the world's accent (strip + glass)
     for (const m of this.wallMats) m.color.copy(c).lerp(tmpWhite, 0.55);
   }
@@ -380,8 +382,8 @@ export class Track {
     this.roadMat.emissiveIntensity = r.roadGlow;
     this.roadMat.color.setScalar(r.roadTone);
     this.roadMat.envMapIntensity = r.roadEnv;
-    this.railGlowMat.color.copy(this.accent).multiplyScalar(r.rails);
-    this.sideGlowMat.color.copy(this.accent).multiplyScalar(r.rails);
+    this.railGlowMat.color.copy(this.accent).multiplyScalar(r.rails * CALM.railGlow);
+    this.sideGlowMat.color.copy(this.accent).multiplyScalar(r.rails * CALM.railGlow);
   }
 
   /** Show/hide props that only make sense on the open sky highway. */
