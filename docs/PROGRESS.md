@@ -37,10 +37,10 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 **Checks**: typecheck OK; `npm test` all green; hs-check 0 fail / 0 warn; native QA 26 / 26 (TikTok) + 26 / 26 (Android).
 
 **Open / interpretations**:
-- "Gold Rush" was taken to mean the Bonus roads (they get the same CRASHED! panel).
-- The all-time board still uses the best single run.
+- Owner confirmed (2026-10-25): "Gold Rush" = the Bonus roads (same CRASHED! panel).
+- Owner agreed: the all-time board keeps the best single run; only the weekly board uses the last-5 average.
 - No real-phone FPS was measured.
-- The owner should remove `rw_head_start` in the HS dashboard if it is still there.
+- The owner removes `rw_head_start` in the HS dashboard if it is still there (owner: OK).
 
 **Next**: the owner tests the zip on Android + iPhone. Do not upload without approval.
 
