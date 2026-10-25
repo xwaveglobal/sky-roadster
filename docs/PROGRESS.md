@@ -42,6 +42,7 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 - Wall Run = the car drives on the side wall (a wall panel; `showX` → the camera).
 - Zenith → named "XWAVE", white, with neutral lights; Vega is ice blue now.
 - The rear badge is the owner's logo (traced polygons, `RENDER.badgeScale`).
+- A brighter screen: `RENDER.exposure` 1.05 → 1.2. The owner approved it on the web, then on native.
 - The class-up hex emblem fits AA / AAA / SSS (web `.len2` / `.len3`; native centred by `rankBadgeW`).
 - MOCK-UP for approval: the Wall Run gate (`src/render/WallGates.ts`) = three solid panels across the road, with one 1.5 m slit against the wall on the run side. It is shown only in the autoplay Wall Run scene (visual only). Once the owner approves: use it for the Bonus wall set piece too.
 - Top-class promotion inside the race (`Game.checkTopClass`): Continue keeps the race going. The Road to AAA demo uses it instead of ending the run.
