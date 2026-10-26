@@ -34,8 +34,9 @@ const SDK_KEY = 'sk_live_de9c8c226305de889005158a15610eeddc57dabe633c86cdee65948
 export const DEFAULTS = {
   rewards: {
     share: { coins: 300, $limit: 'daily' },
-    tiktok_profile: { coins: 300 },
-    tiktok_shortcut: { coins: 300 },
+    // v5 (owner 2026-10-26): 1000 coins, once a day — the game holds them for a CLAIM tap (src/meta/PerkClaims.ts)
+    tiktok_profile: { coins: 1000, $limit: 'daily' },
+    tiktok_shortcut: { coins: 1000, $limit: 'daily' },
   } as Record<string, Record<string, number | string>>,
   items: {
     coins: { category: 'currency', name: 'Coins' },
@@ -140,6 +141,37 @@ export const hs = {
   },
   launchStart() {
     HSGame.tiktokMission.start('shortcut');
+  },
+  /**
+   * v5 (owner 2026-10-26, "B"): ask TikTok ourselves whether a mission the player started (GO, saved in the
+   * game) is complete — the kit only counts a GO made in the SAME session, but Entry / Launch are completed
+   * by re-opening the game (a cold start). Resolves true / false / null (no answer). Read-only: the coins
+   * still come from HSGame.rewards(...) and are paid by the game's CLAIM.
+   */
+  missionCheck(kind: 'profile' | 'shortcut'): Promise<boolean | null> {
+    const api = kind === 'profile' ? 'getEntranceMissionReward' : 'getShortcutMissionReward';
+    const t: any = (typeof GameGlobal !== 'undefined' ? GameGlobal : globalThis as any).tt;
+    if (!t || typeof t[api] !== 'function') return Promise.resolve(null);
+    return new Promise((res) => {
+      const timer = setTimeout(() => res(null), 10000);
+      const done = (v: boolean | null, info: unknown) => {
+        clearTimeout(timer);
+        console.log(`[perk] TikTok ${api} →`, JSON.stringify(info ?? null).slice(0, 160));
+        res(v);
+      };
+      try {
+        t[api]({
+          success: (r: any) => {
+            const flag = r?.canReceiveReward ?? r?.can_receive_reward;
+            // an explicit true; no flag at all = success (the game itself remembers that GO was tapped)
+            done(flag === undefined ? true : flag === true, r);
+          },
+          fail: (e: any) => done(false, e),
+        });
+      } catch (e) {
+        done(null, String(e));
+      }
+    });
   },
   entryDone: () => !!HSGame.tiktokMission.done('profile'),
   launchDone: () => !!HSGame.tiktokMission.done('shortcut'),

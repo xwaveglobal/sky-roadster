@@ -277,6 +277,18 @@ Garage: 9 cars in 5 body styles (GT Coupe ×4 colourways, Hyper Wedge, Thunder M
   - **The coin is now an energy crystal** (owner's pick of 4 options): a blue faceted gem on the road, in the HUD, the Shop, the rewards and the rank board, so it never looks like real money.
   - **Faster loading:** all images re-compressed (3.6 MB → 1.3 MB). The loading art is ≤ 50 KB on the web and ≤ 45 KB on TikTok. The web page shows its loading screen at once, before the game script arrives. The XWAVE logo image files were replaced by the drawn logo.
   - **Top class reached mid-race** (Endless AAA, Mega Rush SSS, first time): the race pauses for the promotion. **Continue** drives on, and the run only ends when the player quits or crashes.
+- **Owner list (2026-10-26):**
+  - **Start screen never dark:** a bright first frame (gradient, name, bar), then the new loading art with a big "LOADING… %" bar.
+  - **Entry / Launch rewards:**
+    - GO → CLAIM (green, "!") → ✓ CLAIMED TODAY (dimmed, with a countdown).
+    - 1000 coins, once a day from 06:00. A big "REWARD RECEIVED!" card shows the coins before → after.
+    - Re-opening the game from the TikTok profile or the home-screen icon counts.
+    - Share shows the same card.
+  - **Hearts are spare lives:**
+    - A race starts with none.
+    - A hit uses a heart first ("HEART USED!"). At 0 hearts comes the CRASHED! revive ad, then one last rescue by an auto-activated special ("LAST CHANCE!").
+    - No hearts on the road while all 3 are full.
+  - **Rank gates weigh the loadout:** with a special / shield in hand the gate leans on what it answers (and is tougher); with nothing in hand it is gentler. Every row stays fair.
 - **Checks:**
   - `npm run check:tiktok`: 0 fail, 0 warn.
   - `scripts/qa/native.mjs`: 26 / 26 in TikTok mode and 26 / 26 in Android mode (HS fake-phone preview, real taps; rerun 2026-10-25). Screens are in `docs/native-v5/`.

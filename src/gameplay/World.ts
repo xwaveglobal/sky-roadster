@@ -56,6 +56,8 @@ export interface WorldHooks {
   despawnObstacle?: (o: LiveObstacle) => void;
   spawnPickup?: (p: LivePickup) => void;
   despawnPickup?: (p: LivePickup) => void;
+  /** v5 (owner): hearts are full → a heart on the road becomes a coin (no heart is shown at 3 / 3) */
+  heartsFull?: () => boolean;
 }
 
 export interface StepOptions {
@@ -151,7 +153,8 @@ export class World {
       this.spawnRow(sp.rows.shift()!);
     }
     while (sp.pickups.length && sp.pickups[0].dist - this.dist < SPAWN_AHEAD) {
-      const spec = sp.pickups.shift()!;
+      let spec = sp.pickups.shift()!;
+      if (spec.kind === 'life' && this.hooks.heartsFull?.()) spec = { ...spec, kind: 'coin' };
       const p: LivePickup = {
         id: nextId++,
         spec,

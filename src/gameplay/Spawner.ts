@@ -9,7 +9,7 @@ import { sectionAt, type Course, type PatternKey } from './Courses.ts';
 import { PASS_ALL, PASS_N } from './types.ts';
 /** extra seconds after a jump/duck row: land, settle, see the next obstacle */
 const VERTICAL_RECOVERY = 0.7;
-import { MAPS, LEVEL_RULES, PATTERNS, tierWeights, type Tier, type MapDifficultyConfig, PHASES, PHASE_UNLOCK, GATE, RANK_ORDER, rankDist, rankIdxAt, rankSpeed, VARIANTS, expRate, expAtDist, type PhaseRank, type Variant } from './Difficulty.ts';
+import { MAPS, LEVEL_RULES, PATTERNS, tierWeights, type Tier, type MapDifficultyConfig, PHASES, PHASE_UNLOCK, GATE, RANK_ORDER, rankDist, rankIdxAt, rankSpeed, VARIANTS, expRate, expAtDist, type PhaseRank, type Variant, type Loadout } from './Difficulty.ts';
 import type { SpeedLevel } from '../config.ts';
 
 /** Base speed is a pure function of distance so spawn timing can be predicted exactly. */
@@ -122,6 +122,9 @@ export class Spawner {
     return rankSpeed(i - 1, v) + (rankSpeed(i, v) - rankSpeed(i - 1, v)) * k;
   }
 
+  /** v5: what the player carries (Game sets it every frame; tests leave it empty) */
+  loadout: Loadout = { jump: false, sos: false, shield: false };
+
   /**
    * v2: where on the rank ladder distance d is.
    *  phase    — difficulty phase (index into PHASES)
@@ -153,8 +156,10 @@ export class Spawner {
     if (z.kind === 'gate') {
       const nx = PHASES[Math.min(PHASES.length - 1, z.phase + 1)];
       const t = [...nx.tiers] as [number, number, number, number];
-      t[2] *= GATE.hardBoost;
-      t[3] *= GATE.hardBoost;
+      const lo = this.loadout;
+      const push = lo.jump || lo.sos || lo.shield ? GATE.hardBoost : GATE.hardBoostBare;
+      t[2] *= push;
+      t[3] *= push;
       const sum = t[0] + t[1] + t[2] + t[3];
       return { ...nx, world, target: 10, tiers: t.map((x) => x / sum) as [number, number, number, number], maxConsecutiveHard: nx.maxConsecutiveHard + 1, density: 1, warmup: 0 };
     }
@@ -772,6 +777,15 @@ export class Spawner {
       for (const p of patterns) {
         if (PHASE_UNLOCK[p.k] > ph) p.w = 0;
         else p.w *= PHASES[ph].boost[p.k] ?? 1;
+      }
+      // v5: a rank gate leans on what the player carries (weights only — every row stays fair)
+      if (z.kind === 'gate') {
+        const lo = this.loadout;
+        for (const p of patterns) {
+          if (lo.jump) p.w *= GATE.loadout.jump[p.k] ?? 1;
+          if (lo.sos) p.w *= GATE.loadout.sos[p.k] ?? 1;
+          if (lo.shield) p.w *= GATE.loadout.shield[p.k] ?? 1;
+        }
       }
     }
     const usable = patterns.filter((p) => p.w > 0 && PATTERNS[p.k].worlds.includes(world) && PATTERNS[p.k].tier <= maxTier);

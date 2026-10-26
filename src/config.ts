@@ -93,7 +93,8 @@ export const V2_POWERUPS = { engine: 2, shield: 2, magnet: 2 };
  * coins are scarce on Endless (~40 / min for a good player) and generous on Bonus roads.
  */
 /** v2 hearts: every EXP race starts with 1; a heart lies on the road about every `everyExp` EXP */
-export const HEARTS = { everyExp: 1000, max: 3 };
+/** v5 (owner 2026-10-26): hearts are spare lives — a race starts with `start` of them (0) */
+export const HEARTS = { everyExp: 1000, max: 3, start: 0 };
 /** v4.6.1 (owner): classes C / B / A unlock no car → their first-time promotion gives coins + 1 special */
 export const CLASS_REWARD: Partial<Record<'C' | 'B' | 'A', { coins: number; item: 'super' | 'hyper' | 'escape' }>> = {
   C: { coins: 300, item: 'super' },

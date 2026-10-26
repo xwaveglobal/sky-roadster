@@ -1,4 +1,4 @@
-import { GIFTS, POWERUP_DURATION, SCORE, SPEED } from '../config.ts';
+import { GIFTS, HEARTS, POWERUP_DURATION, SCORE, SPEED } from '../config.ts';
 import type { MissionStat } from './Missions.ts';
 import type { PickupKind } from './types.ts';
 import type { WorldEvent } from './World.ts';
@@ -41,7 +41,8 @@ export class Run {
   rings = 0;
   powerups = 0;
   combo = 0;
-  lives = 1;
+  /** v5 (owner 2026-10-26): hearts are SPARE lives — the race starts with none (HEARTS.start) */
+  lives = HEARTS.start;
   maxLives = 3; // HEARTS.max
 
   /** ROADSTER JUMP charges (swipe UP to use) */
@@ -198,13 +199,14 @@ export class Run {
           // Step 06.5: a hit that would END the run asks the game for a last-chance rescue (selected
           // pre-race special, only when no normal revive is left); a successful rescue absorbs this hit
           // (no life lost, no crash) — the special's own flight protection takes over
-          if (this.lives <= 1 && this.lastChance?.()) {
+          // v5: a heart saves first (it is used up, the race goes on); only with no heart left is the hit final
+          if (this.lives <= 0 && this.lastChance?.()) {
             this.feedback.push({ t: 'rescued' });
             return null;
           }
           this.combo = 0;
-          this.lives = Math.max(0, this.lives - 1);
           const final = this.lives <= 0;
+          if (!final) this.lives -= 1;
           this.feedback.push({ t: 'crash', final, x: (b.minX + b.maxX) / 2, y: (b.minY + b.maxY) / 2, z: e.o.z, type: e.o.spec.type });
           result = final ? 'gameover' : 'crash';
           // ignore anything else this frame

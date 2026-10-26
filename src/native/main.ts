@@ -8,7 +8,8 @@
 import './log.ts'; // first: catches everything logged while the game starts
 import { LOG, logErrors } from './log.ts';
 import { DPR, NATIVE, emitWindow, makeImage, safeArea, screenCanvas, sizeScreen, viewH, viewW } from './adapter.ts';
-import { hs, profile } from './hs.ts';
+import { hs, hsReady, profile } from './hs.ts';
+import { bindPerks, ttPerks } from './perks.ts';
 import './save.ts';
 import * as THREE from 'three';
 import { COLOR_MODES, applyColor, color, colorLine, measure } from './color.ts';
@@ -21,6 +22,9 @@ import { SAFE } from './ui/layout.ts';
 
 declare const GameGlobal: any;
 const G: any = typeof GameGlobal !== 'undefined' ? GameGlobal : globalThis;
+/** v5: boot timing (QA + the in-game log): module start → first frame on screen */
+const bootT0 = typeof performance !== 'undefined' ? performance.now() : Date.now();
+G.__boot = { t0: bootT0 } as Record<string, number>;
 const T: any = G.tt;
 
 // ---------------------------------------------------------------- platform services (HS SDK)
@@ -110,6 +114,7 @@ const container: any = {
 };
 
 let game: Game | null = null;
+G.__boot.beforeGame = (typeof performance !== 'undefined' ? performance.now() : Date.now()) - bootT0;
 let ui: UI | null = null;
 try {
   game = new Game(container);
@@ -233,8 +238,14 @@ if (ui && game) {
     orig(cb);
   };
   const raf = G.requestAnimationFrame ?? ((cb: () => void) => setTimeout(cb, 16));
+  let firstFrame = true;
   const pre = () => {
     if (booted) return;
+    if (firstFrame) {
+      firstFrame = false;
+      G.__boot.firstFrame = now() - bootT0;
+      console.log(`[boot] first frame ${Math.round(G.__boot.firstFrame)} ms after start (game ${Math.round(G.__boot.firstFrame - G.__boot.beforeGame)} ms)`);
+    }
     try {
       r3.setRenderTarget(null);
       r3.setClearColor(0x04071a, 1);
@@ -368,6 +379,7 @@ hs.onPause(() => {
 });
 hs.onResume(() => {
   if (ui) ui.dirty = true; // v3.0.11: back from TikTok (mission / share): re-check reward buttons
+  void ttPerks.check(); // v5: a GO from before → ask TikTok (the re-open counts)
   const a = (game as any)?.audio;
   a?.duck(false);
   try {
@@ -379,6 +391,21 @@ hs.onResume(() => {
 const REWARD_TITLE: Record<string, string> = { tiktok_profile: 'Entry Reward', tiktok_shortcut: 'Launch Reward', share: 'Share Reward' };
 hs.onGiven((items, from) => {
   const gm: any = game;
+  // v5 (owner 2026-10-26): Entry / Launch coins wait for the player's CLAIM tap (src/native/perks.ts)
+  if ((from === 'tiktok_profile' || from === 'tiktok_shortcut') && ttPerks.fromKit(from, Number(items.coins) || 0)) {
+    ui?.toast(`<b>Mission complete!</b> · tap CLAIM for your coins`, '#3fe07c');
+    gm?.persist?.();
+    ui?.refreshProfile(gm?.save);
+    return;
+  }
+  // v5: Share — the big reward card (coins before → after)
+  if (from === 'share' && Number(items.coins) > 0 && gm?.save) {
+    const after = gm.save.wallet;
+    ui?.rewardCard({ title: 'SHARE REWARD', headline: 'THANKS FOR SHARING!', coins: Number(items.coins), before: after - Number(items.coins), after, sub: 'coins added · next share reward tomorrow' });
+    gm.persist?.();
+    ui?.refreshProfile(gm.save);
+    return;
+  }
   const parts: string[] = [];
   for (const [k, n] of Object.entries(items)) if (n) parts.push(k === 'coins' ? `+${n} coins` : `${hs.itemName(k)} ×${n}`);
   // v3.0.11: the three reward buttons get a clear "Reward Claimed!" (it stays even when the button hides)
@@ -398,6 +425,9 @@ for (const k of ['coins', 'super', 'hyper', 'escape', 'no_ads'])
 
 // ---------------------------------------------------------------- go
 if (game) {
+  bindPerks(game);
+  (G as any).__ttPerks = ttPerks; // QA (scripts/qa/native.mjs --only=perks)
+  void hsReady.then(() => ttPerks.check());
   T.setKeepScreenOn?.({ keepScreenOn: true });
   game.boot().catch((e: unknown) => console.error('[sky-roadster] boot failed', e));
 }

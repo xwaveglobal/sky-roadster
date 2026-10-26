@@ -138,6 +138,42 @@ for (const level of LEVEL_IDS) {
   console.log(`  autopilot: ${km.toFixed(0)} km through the rank gates, ${crashes} crashes`);
 }
 
+// ---------------------------------------------------------------- v5: rank gates weigh the player's loadout
+{
+  const share = (lo: { jump: boolean; sos: boolean; shield: boolean }) => {
+    let h = 0,
+      n = 0,
+      bad = 0;
+    for (const level of LEVEL_IDS) {
+      for (let seed = 1; seed <= 4; seed++) {
+        const sp = new Spawner(new Rng(seed * 733 + level.length));
+        sp.level = level;
+        sp.speedMul = LEVELS[level].speed;
+        sp.gapMul = LEVELS[level].gap;
+        sp.loadout = { ...lo };
+        sp.reset(0);
+        sp.generateUntil(rankDist(VARIANTS.endless.top, level) + 500);
+        let reach = START_STATE;
+        for (const r of sp.rows) {
+          reach = step(reach, r.masks, r.dt);
+          if (!reach) {
+            bad++;
+            break;
+          }
+          if (sp.zoneAt(r.dist).kind !== 'gate' || !r.obstacles.length) continue;
+          n++;
+          if ((r.tier ?? 0) >= 3) h++;
+        }
+      }
+    }
+    return { share: n ? h / n : 0, bad };
+  };
+  const bare = share({ jump: false, sos: false, shield: false });
+  const full = share({ jump: true, sos: true, shield: true });
+  bare.bad + full.bad === 0 ? ok(`rank gates fair with and without specials in hand (hard rows: bare ${(bare.share * 100).toFixed(0)}% · with specials ${(full.share * 100).toFixed(0)}%)`) : fail(`rank gate unavoidable row (bare ${bare.bad}, loadout ${full.bad})`);
+  full.share + 0.01 >= bare.share ? ok('a player with specials meets a tougher gate than one with nothing in hand') : fail('loadout gate is not tougher than the bare gate');
+}
+
 if (fails) {
   console.error(`${fails} FAILED`);
   process.exit(1);

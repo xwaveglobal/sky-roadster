@@ -44,7 +44,7 @@ export interface HudState {
 
 const BASE = ['loading', 'start', 'tracks', 'garage', 'missions', 'ranks', 'daily', 'events', 'shop', 'hud', 'countdown', 'tutprompt'];
 /** overlay draw order (bottom → top) */
-export const OVERLAYS = ['finish', 'gameover', 'runrank', 'continue', 'pause', 'tutdone', 'tutintro', 'settings', 'guide', 'eventres', 'profile', 'bonus', 'specialpick', 'bag', 'bagbuy', 'boostinfo', 'spconfirm', 'rankguide', 'account', 'cloudpick', 'classup', 'sharepv', 'popup', 'logs', 'demopick'];
+export const OVERLAYS = ['finish', 'gameover', 'runrank', 'continue', 'pause', 'tutdone', 'tutintro', 'settings', 'guide', 'eventres', 'profile', 'bonus', 'specialpick', 'bag', 'bagbuy', 'boostinfo', 'spconfirm', 'rankguide', 'account', 'cloudpick', 'classup', 'sharepv', 'popup', 'logs', 'demopick', 'rewardcard'];
 
 export class UI {
   /** Game uses root.getBoundingClientRect() to map 3D → screen */
@@ -63,6 +63,8 @@ export class UI {
   loading = 0;
   /** v4.6: the bar value on screen (glides toward `loading`) and the last frame time */
   loadShown = 0;
+  /** v5: when the loading art arrived (it fades in over the bright first frame) */
+  loadImgAt = 0;
   loadT = 0;
   loadText = 'Loading…';
   home: Parameters<UI['homeSync']>[0] | null = null;
@@ -401,6 +403,12 @@ export class UI {
     this.pushNotice({ kind: 'toast', html, color });
   }
   /** v3.0.11: "Reward Claimed!" after an Entry / Launch / Share reward (shown even if its button is gone) */
+  /** v5: the big "REWARD RECEIVED" card (Entry / Launch CLAIM, Share) */
+  rcard: { title: string; headline: string; coins: number; before?: number; after?: number; sub: string; t0: number } | null = null;
+  rewardCard(o: { title: string; headline: string; coins: number; before?: number; after?: number; sub: string }) {
+    this.rcard = { ...o, t0: this.t() };
+    this.showOverlay('rewardcard');
+  }
   rewardClaimed(title: string, what: string) {
     this.toastNow(`<b>Reward Claimed!</b><br/>${title} · ${what}`, 'var(--gold)');
     this.dirty = true;

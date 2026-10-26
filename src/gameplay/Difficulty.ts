@@ -209,7 +209,27 @@ export const GATE = {
   hardBoost: 1.45,
   /** metres over which a phase's speed is eased in */
   speedEase: 600,
+  /**
+   * v5 (owner 2026-10-26): the rank gate weighs what the player carries. With a special the gate leans
+   * on the obstacles that special answers best (still every row is passable by skill — the spawner's
+   * fairness rules are unchanged); with nothing in hand the hard-tier push is gentler.
+   */
+  hardBoostBare: 1.2,
+  loadout: {
+    /** Roadster / HYPER Jump in hand: tall walls and vehicle rows (the jump clears them) */
+    jump: { wall3: 1.6, trafficMix: 1.5, low2: 1.25, traffic: 1.3 } as Record<string, number>,
+    /** SOS Escape in hand: traffic (the escape flies out of a jam) */
+    sos: { traffic: 1.6, trafficMix: 1.6, low2: 1.2 } as Record<string, number>,
+    /** shield up: denser solid blockers (it soaks hits) */
+    shield: { crate: 1.3, low2: 1.3, crateBeam: 1.3 } as Record<string, number>,
+  },
 };
+/** what the player carries right now (set by the game; the spawner reads it at rank gates) */
+export interface Loadout {
+  jump: boolean;
+  sos: boolean;
+  shield: boolean;
+}
 
 /** EXP per metre on a road at a speed level */
 export const expRate = (level: SpeedLevel, v: Variant = 'endless') => EXP.rate[level] * VARIANTS[v].rateMul;

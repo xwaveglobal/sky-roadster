@@ -19,6 +19,8 @@ import type { RunRewards } from '../../ui/UI.ts';
 import { hs } from '../hs.ts';
 import { askText } from '../text.ts';
 import { DEMO_MENU, REC_MODE } from '../../core/demoFlag.ts';
+import { ttPerks, type TtPerk } from '../perks.ts';
+import { fmtLeft } from '../../meta/PerkClaims.ts';
 
 type Close = 'modal' | 'ov' | 'none';
 interface ModalOpts {
@@ -96,6 +98,7 @@ const OV: Record<string, (ui: UI, g: Gfx) => void> = {
   cloudpick: cloudpickOv,
   popup: popupOv,
   demopick: demopickOv,
+  rewardcard: rewardcardOv,
 };
 export function drawOverlay(ui: UI, g: Gfx, id: string) {
   OV[id]?.(ui, g);
@@ -693,6 +696,33 @@ function settingsOv(ui: UI, g: Gfx) {
   });
 }
 
+/** v5 (owner 2026-10-26): the big "REWARD RECEIVED" card — Entry / Launch CLAIM and Share */
+function rewardcardOv(ui: UI, g: Gfx) {
+  const o = ui.rcard;
+  if (!o) return;
+  const W = g.W,
+    H = g.H;
+  const t = (ui.now() - o.t0) / 1000;
+  g.rr(0, 0, W, H, 0, 'rgba(3,6,22,.82)');
+  g.block(0, 0, W, H);
+  const top = safeTop(g) + Math.max(40, H * 0.1);
+  const pop = Math.min(1, t / 0.45);
+  const ease = 1 + 0.18 * Math.sin(pop * Math.PI) * (1 - pop);
+  g.text(o.title, W / 2, top, { size: 13, align: 'center', font: 'b', color: '#9fd4ff', noTr: true });
+  g.text(o.headline, W / 2, top + 36, { size: 30, align: 'center', italic: true, color: '#3fe07c', stroke: '#0b3a1e', strokeW: 4, maxW: W - 30 });
+  const s = 120 * ease;
+  g.icon(ICON.coin, W / 2 - s / 2, top + 66 + (120 - s) / 2, s);
+  g.text(`+${fmt(o.coins)}`, W / 2, top + 232, { size: 50, align: 'center', italic: true, color: '#9ff0ff', stroke: '#0e3c9a', strokeW: 5, noTr: true });
+  g.text(o.sub, W / 2, top + 276, { size: 14, align: 'center', font: 'b', color: '#dfe8ff', maxW: W - 40 });
+  if (o.before !== undefined && o.after !== undefined) g.rich(`${ICON.coin} <b>${fmt(o.before)}</b> → <b style="color:#9ff0ff">${fmt(o.after)}</b>`, 20, top + 296, W - 40, { size: 16, align: 'center', noTr: true });
+  const bw = Math.min(240, W - 80);
+  button(g, 'rc-ok', (W - bw) / 2, H - safeBottom(g) - 110, bw, 56, 'OK', () => {
+    ui.hideOverlay('rewardcard');
+    ui.rcard = null;
+  }, { style: 'blue', size: 22 });
+  if (t < 1) ui.dirty = true;
+}
+
 /** v5 Autoplay picker (video-recording build): 3 scenes + one scene per special item */
 function demopickOv(ui: UI, g: Gfx) {
   modal(ui, g, 'demopick', { title: 'AUTOPLAY' }, (x, y, w) => {
@@ -1183,7 +1213,7 @@ function popupOv(ui: UI, g: Gfx) {
   };
   const coinBig = (n: number, x: number, y: number, w: number, pre = 'x') => {
     g.icon(coinPile(230, 126), x + w / 2 - 90, y, 180, '#fff', 98);
-    g.text(`${pre}${fmt(n)}`, x + w / 2, y + 112, { size: 28, align: 'center', italic: true, color: C.gold, stroke: '#4a2a00', strokeW: 4, noTr: true });
+    g.text(`${pre}${fmt(n)}`, x + w / 2, y + 112, { size: 28, align: 'center', italic: true, color: '#9ff0ff', stroke: '#0e3c9a', strokeW: 4, noTr: true });
     return y + 134;
   };
   const steps = (list: [string, boolean][], x: number, y: number, w: number) => {
@@ -1262,24 +1292,37 @@ function popupOv(ui: UI, g: Gfx) {
       }
       // ---- TikTok review popups (HS kit): numbered steps + the reward from HSGame.rewards(key)
       case 'entry':
-      case 'invite': {
-        y = head(giftBox(46), 'ENTRY REWARD', x, y, w);
-        const done = hs.entryDone();
-        y = steps([['Go to your TikTok profile', done], ['Open "TikTok Minis"', done], ['Open Sky Roadster from there', done], ['Come back and get the reward', done]], x, y, w);
-        y = coinBig(rewardOf(hs.entryReward(), 300), x, y + 4, w, '+');
-        if (done) button(g, 'pe-go', x, y, w, 50, `${ICON.check} Reward claimed`, () => {}, { style: 'ghost', disabled: true });
-        else button(g, 'pe-go', x, y, w, 54, 'GO', once('entry', () => hs.entryStart()), { style: 'blue', size: 22 });
-        return y + 58;
-      }
+      case 'invite':
       case 'launch':
       case 'addscreen': {
-        y = head(megaphone(46), 'LAUNCH REWARD', x, y, w);
-        const done = hs.launchDone();
-        y = steps([['Tap "Go"', done], ['Add the game to your home screen', done], ['Open the game from the new icon', done], ['Get the reward', done]], x, y, w);
-        y = coinBig(rewardOf(hs.launchReward(), 300), x, y + 4, w, '+');
-        if (done) button(g, 'pl-go', x, y, w, 50, `${ICON.check} Reward claimed`, () => {}, { style: 'ghost', disabled: true });
-        else button(g, 'pl-go', x, y, w, 54, 'GO', once('launch', () => hs.launchStart()), { style: 'blue', size: 22 });
-        return y + 58;
+        // v5 (owner 2026-10-26): GO → CLAIM → ✓ CLAIMED TODAY, once per game day (06:00) — src/native/perks.ts
+        const k: TtPerk = p.kind === 'entry' || p.kind === 'invite' ? 'entry' : 'launch';
+        const st = ttPerks.status(k);
+        const amt = st === 'claim' ? ttPerks.pending(k) || ttPerks.amount(k) : ttPerks.amount(k);
+        y = head(k === 'entry' ? giftBox(46) : megaphone(46), k === 'entry' ? 'ENTRY REWARD' : 'LAUNCH REWARD', x, y, w);
+        const ok = st !== 'go';
+        const list: [string, boolean][] =
+          k === 'entry'
+            ? [['Tap GO', ok], ['On your TikTok profile, open Sky Roadster', ok], [st === 'claimed' ? "Today's reward claimed" : 'Come back here and tap CLAIM', st === 'claimed']]
+            : [['Tap GO', ok], ['Add Sky Roadster to your home screen', ok], ['Open the game from the new icon', ok], [st === 'claimed' ? "Today's reward claimed" : 'Tap CLAIM', st === 'claimed']];
+        y = steps(list, x, y, w);
+        if (st === 'claimed') g.alpha(0.5);
+        y = coinBig(amt, x, y + 4, w, '+');
+        g.alpha(1);
+        if (st === 'go') button(g, k === 'entry' ? 'pe-go' : 'pl-go', x, y, w, 54, `${ICON.play} GO`, once(k, () => ttPerks.go(k)), { style: 'blue', size: 22 });
+        else if (st === 'claim')
+          button(g, k === 'entry' ? 'pe-claim' : 'pl-claim', x, y, w, 56, `${ICON.coin} CLAIM +${fmt(amt)}`, once(k + 'c', () => {
+            const r = ttPerks.claim(k);
+            if (!r) return;
+            ui.closePopup();
+            ui.rewardCard({ title: k === 'entry' ? 'ENTRY REWARD' : 'LAUNCH REWARD', headline: 'REWARD RECEIVED!', coins: r.coins, before: r.before, after: r.after, sub: 'coins added to your wallet' });
+          }), { style: 'green', size: 22 });
+        else button(g, k === 'entry' ? 'pe-done' : 'pl-done', x, y, w, 50, `${ICON.check} CLAIMED TODAY`, () => {}, { style: 'ghost', disabled: true, size: 18 });
+        y += st === 'claim' ? 62 : 58;
+        const note = st === 'claimed' ? `Next reward in ${fmtLeft(ttPerks.nextReset())}` : st === 'claim' ? 'Mission complete!' : 'Once a day · new reward every day at 06:00';
+        g.text(note, x + w / 2, y + 4, { size: 11, align: 'center', font: 'b', color: st === 'claim' ? C.green : C.muted, noTr: true });
+        if (st === 'claimed') ui.dirty = true; // the countdown ticks
+        return y + 16;
       }
       case 'share': {
         const rw = hs.shareReward();

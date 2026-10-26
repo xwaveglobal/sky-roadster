@@ -4,6 +4,34 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 
 ---
 
+## 2026-10-26 — v5.0.0 (branch `v5.0`): no dark first frame, Entry / Launch CLAIM, spare hearts, rank gates by loadout
+
+**Owner** (discussed first, mock-ups `mock_a` / `mock_b` approved):
+- Never a dark or black screen at start (reads as a crash, the game gets rejected); the new loading art.
+- Entry / Launch: GO → CLAIM → CLAIMED (dimmed), 1000 coins, once a day from 06:00; a big clear reward notice; Share notice the same (Share stays 300).
+- The player starts with **no heart**: a heart saves first, then the revive ad, then one last rescue by an auto-activated special. Hearts never spawn at 3 / 3.
+- Rank gates weigh the items the player has.
+
+**Done**:
+- **Loading** (native): a bright sky gradient with "SKY ROADSTER" and a big bar is drawn from the very first frame. The owner's art (`loading.webp` 540×960 / 48 KB, TikTok `loading.jpg` 480×853 / 44 KB) fades in over it (`Gfx.imgReady`). The bar is bigger, with a glowing rim and "LOADING… NN%". The web `#boot` preview is the new art. Boot timing is in `GameGlobal.__boot` and the in-game log.
+- **Entry / Launch**: `src/meta/PerkClaims.ts` (pure, tested: the game day starts at 06:00, no stacking, one claim a day) and `src/native/perks.ts`:
+  - The kit's payment of `tiktok_profile` / `tiktok_shortcut` is moved from the wallet into `Save.tt.<kind>.pend`. CLAIM pays it and shows the big `rewardcard` overlay (+N, coins before → after).
+  - "B": GO is saved, and after a cold re-open `hs.missionCheck` asks TikTok itself (`getEntranceMissionReward` / `getShortcutMissionReward`, read-only, logged as `[perk]`).
+  - Home tiles: GO "!" → green CLAIM (glow, "!") → dimmed ✓ with time to 06:00. The popups show the steps, GO / CLAIM +N / ✓ CLAIMED TODAY and a countdown.
+  - Rewards are 1000 coins with `$limit: daily` (code defaults and `tiktok.hs-dashboard.json`).
+  - Share shows the same reward card.
+- **Lives**:
+  - `HEARTS.start = 0`. `Run`: a hit uses a heart if there is one (the race goes on, big "HEART USED!" notice); only at 0 hearts is it final (→ CRASHED! revive, at most 2).
+  - After that, `lastChance` auto-activates the race's special, with a big "LAST CHANCE! … AUTO-ACTIVATED — saved you!" notice.
+  - `World.hooks.heartsFull`: a heart on the road becomes a coin at 3 / 3.
+- **Rank gates**: `Spawner.loadout` (set every frame: jump / SOS / shield in hand) → gate weights `GATE.loadout`. With nothing in hand the hard push is `GATE.hardBoostBare` 1.2 (was 1.45 for everyone). Rows stay fair; tested in `phases.test.ts`: bare 43 % vs. with specials 50 % hard rows, no unavoidable rows.
+
+**Owner to do**:
+- In the HS dashboard (Ads Config / rewards), set `tiktok_profile` and `tiktok_shortcut` to 1000 coins with `$limit: daily` (`tiktok.hs-dashboard.json`). Until then the dashboard's 300 / once wins.
+- Test Entry / Launch on a real phone. The in-game log (tap the version 5 × in Settings) shows `[perk]` lines with TikTok's answers.
+
+---
+
 ## 2026-10-25 — v5.0.0 (branch `v5.0`): owner list — death flow, rank by the last 5 runs, calmer road, autoplay
 
 **Owner** (listed first, then fixed): text overlaps, defaults, calmer visuals, no head start ad, restart special, ranking "way 1", CRASHED! / rank board / Finish / Pause from the approved mock-ups (keep the old neon style), autoplay demo scenes for videos.

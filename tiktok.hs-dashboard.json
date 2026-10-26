@@ -40,10 +40,12 @@
         "$limit": "daily"
       },
       "tiktok_profile": {
-        "coins": 300
+        "coins": 1000,
+        "$limit": "daily"
       },
       "tiktok_shortcut": {
-        "coins": 300
+        "coins": 1000,
+        "$limit": "daily"
       }
     },
     "items": {

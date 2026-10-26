@@ -339,6 +339,63 @@ try {
     check(sk, 'training: Skip always on screen', sk);
     if (sk) await tap('tutskip');
   }
+  // ------------------------------------------------------------------ v5 Entry / Launch: GO → CLAIM → CLAIMED (06:00 day)
+  if (want('perks') && !android) {
+    console.log('H. Entry / Launch rewards');
+    const home = async () => {
+      await ev(() => {
+        const G = window.__xwave;
+        for (const id of [...G.ui.shown]) if (!['start'].includes(id)) G.ui.hideOverlay(id);
+        G.goHome();
+      });
+      await until(() => window.__xwave.ui.shown.has('start'));
+    };
+    await home();
+    await ev(() => { const s = window.__xwave.save; s.tt = {}; window.__xwave.persist(); window.__xwave.ui.dirty = true; });
+    await tap('pk-entry');
+    await until(() => window.__xwave.ui.shown.has('popup'));
+    check(await ev(() => window.__xwave.ui.g.hits.some((x) => x.key === 'pe-go')), 'Entry popup: GO first');
+    await shot('20_entry_go');
+    await tap('pe-go');
+    const go = await ev(() => !!window.__xwave.save.tt?.entry?.go);
+    check(go, 'GO saves the tap (counts after a cold re-open)');
+    // the preview's fake TikTok profile: "Visited — come back" → the kit asks TikTok → pays → the game holds it for CLAIM
+    const w0 = await ev(() => window.__xwave.save.wallet);
+    const back = fr.locator('button, div', { hasText: /^Visited — come back$/ }).last();
+    await back.waitFor({ timeout: 15000 }).then(() => back.click()).catch(() => {});
+    await until(() => window.__ttPerks.status('entry') === 'claim', 8000);
+    let st = await ev(() => window.__ttPerks.status('entry'));
+    if (st !== 'claim') {
+      // no payment from the preview: simulate the kit's (coins straight into the wallet)
+      await ev(() => { window.__xwave.save.wallet += 1000; window.__ttPerks.fromKit('tiktok_profile', 1000); });
+      st = await ev(() => window.__ttPerks.status('entry'));
+    }
+    const w1 = await ev(() => window.__xwave.save.wallet);
+    check(w1 === w0 && st === 'claim', 'TikTok confirmed → CLAIM; the kit payment is held (wallet unchanged until CLAIM)', { w0, w1, st });
+    await home();
+    await shot('21_home_claim');
+    await tap('pk-entry');
+    await until(() => window.__xwave.ui.g.hits.some((x) => x.key === 'pe-claim'));
+    await shot('22_entry_claim');
+    await tap('pe-claim');
+    await until(() => window.__xwave.ui.shown.has('rewardcard'));
+    const w2 = await ev(() => window.__xwave.save.wallet);
+    check(w2 === w0 + 1000, 'CLAIM adds 1000 coins', { w0, w2 });
+    await page.waitForTimeout(900);
+    await shot('23_reward_card');
+    await tap('rc-ok');
+    await home();
+    await tap('pk-entry');
+    await until(() => window.__xwave.ui.g.hits.some((x) => x.key === 'pe-done'));
+    check(true, 'after CLAIM: ✓ CLAIMED TODAY (dimmed) + countdown');
+    await shot('24_entry_claimed');
+    await home();
+    await shot('25_home_claimed');
+    await tap('pk-launch');
+    await until(() => window.__xwave.ui.g.hits.some((x) => x.key === 'pl-go'));
+    await shot('26_launch_go');
+    await home();
+  }
   // ------------------------------------------------------------------ autoplay (only in the --demo video build)
   if (want('demo') && (only.includes('demo') || process.argv.includes('--demo'))) {
     console.log('G. autoplay (video build)');

@@ -101,6 +101,8 @@ export interface SaveData {
   giftDay: string;
   popDay: string;
   /** one-off / daily reward popups (entry, launch, share, invite, rate) */
+  /** v5 native TikTok Entry / Launch rewards: GO → CLAIM → CLAIMED per game day (src/meta/PerkClaims.ts) */
+  tt?: { entry?: import('../meta/PerkClaims.ts').PerkRec; launch?: import('../meta/PerkClaims.ts').PerkRec };
   perks: { profileSeen?: boolean; avatarPicked?: boolean; entry?: boolean; launch?: boolean; shareDay?: string; inviteDay?: string; invites?: number; rated?: boolean; rateAsked?: boolean; countryDetected?: boolean; kit2?: boolean };
   /** v2.2: key of the Bonus event already played (one play per event) */
   bonusPlayed?: string;

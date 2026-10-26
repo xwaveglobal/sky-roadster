@@ -1,6 +1,8 @@
 /** v3 native UI — full screens (home, tracks, garage, missions, ranks, daily, shop…) */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PERK_ORDER, perkLayout, perkOnHome, perkVisible } from '../../meta/Perks.ts';
+import { ttPerks } from '../perks.ts';
+import { fmtLeft as fmtClock } from '../../meta/PerkClaims.ts';
 import { C, Gfx, bar, button, card, fmt, iconBtn, panel, rankBadge, toggle } from './gfx.ts';
 import type { UI } from './NativeUI.ts';
 import { BAG_ICON, BOLT, CAR_LINE, ICON, ITEM_ICON, RARITY_COLOR, ROCKET_W, SPECIAL_SHORT, TUT_ICON } from './consts.ts';
@@ -103,11 +105,26 @@ function scrollList(g: Gfx, key: string, x: number, y: number, w: number, h: num
 
 // ------------------------------------------------------------------ loading
 function loading(ui: UI, g: Gfx) {
-  g.rr(0, 0, g.W, g.H, 0, '#04071a');
-  g.img(loadingUrl, 0, 0, g.W, g.H, 'cover');
+  // v5 (owner 2026-10-26): NEVER a dark / black first frame (it reads as a crash and gets the game
+  // rejected) — a bright sky gradient with the name and the bar shows at once; the loading art fades in
+  // over it as soon as it has arrived
+  g.rr(0, 0, g.W, g.H, 0, g.lin(0, 0, g.W * 0.4, g.H, [[0, '#3a6cf0'], [0.5, '#5a3fe0'], [1, '#c03fd8']]));
+  const ready = g.imgReady(loadingUrl);
+  if (ready && !ui.loadImgAt) ui.loadImgAt = g.time;
+  const k = ready ? Math.min(1, (g.time - ui.loadImgAt) / 250) : 0;
+  if (k < 1) {
+    g.text('SKY', g.W / 2, g.H * 0.36, { size: 54, align: 'center', italic: true, color: '#ffffff', stroke: '#1a2a7a', strokeW: 6, noTr: true });
+    g.text('ROADSTER', g.W / 2, g.H * 0.36 + 56, { size: 44, align: 'center', italic: true, color: '#ffffff', stroke: '#1a2a7a', strokeW: 6, noTr: true });
+    ui.dirty = true;
+  }
+  if (ready) {
+    g.alpha(k);
+    g.img(loadingUrl, 0, 0, g.W, g.H, 'cover');
+    g.alpha(1);
+  }
   g.block(0, 0, g.W, g.H);
-  const y = g.H - safeBottom(g) - 70;
-  const w = Math.min(280, g.W - 80);
+  const y = g.H - safeBottom(g) - 74;
+  const w = Math.min(300, g.W - 70);
   // v4.6 (owner): the bar always visibly runs — it glides toward the real progress and creeps on while
   // a step takes long — with "Loading… NN %" under it (never "Ready")
   const dt = Math.min(0.1, Math.max(0, (g.time - ui.loadT) / 1000));
@@ -116,8 +133,11 @@ function loading(ui: UI, g: Gfx) {
   if (gap > 0.001) ui.loadShown += Math.max(gap * Math.min(1, dt * 6), dt * 0.08);
   else if (ui.loadShown < 0.99) ui.loadShown += Math.max(0, Math.min(ui.loading + 0.09, 0.99) - ui.loadShown) * dt * 0.4;
   ui.loadShown = Math.min(1, ui.loadShown);
-  bar(g, (g.W - w) / 2, y, w, 8, ui.loadShown, g.lin(0, 0, g.W, 0, [[0, '#4fc3ff'], [1, '#ff4fd8']]), 'rgba(0,0,0,.5)');
-  g.text(`Loading… ${Math.floor(ui.loadShown * 100)}%`, g.W / 2, y + 26, { size: 13, align: 'center', font: 'b' });
+  // a big, clear bar with a glowing rim + "LOADING… NN%"
+  const bx = (g.W - w) / 2;
+  g.rr(bx - 4, y - 4, w + 8, 22, 11, 'rgba(6,12,40,.78)', '#5ee6ff', 2);
+  bar(g, bx, y, w, 14, ui.loadShown, g.lin(0, 0, g.W, 0, [[0, '#3aa0ff'], [0.55, '#5ee6ff'], [1, '#ff4fd8']]), 'rgba(255,255,255,.12)');
+  g.text(`LOADING… ${Math.floor(ui.loadShown * 100)}%`, g.W / 2, y + 40, { size: 18, align: 'center', font: 'b', color: '#ffffff', stroke: 'rgba(0,0,0,.65)', strokeW: 4, noTr: true });
 }
 
 // ------------------------------------------------------------------ home
@@ -221,13 +241,20 @@ function start(ui: UI, g: Gfx) {
     const target = lay[p.kind];
     if (target === null) return;
     const y = railY(ui, p.key, target, g.time);
-    const open = perkVisible(p.kind, pst);
-    tile(W - 68, y, p.key, p.icon, p.label, p.col, () => ui.h.perk(p.kind), p.badge && open ? '!' : '');
-    if (!open && pst.started && p.kind !== 'share') {
-      // claimed: a small green ✓ where the "!" was
-      g.circle(W - 68 + 48, y + 2, 9, '#2fd36b', '#fff', 1.5);
-      g.icon(ICON.check, W - 68 + 41, y - 5, 14, '#ffffff');
-    }
+    // v5 (owner 2026-10-26): GO ("!") → CLAIM (green, "!") → ✓ claimed today (dimmed, time to the next one)
+    const st = p.kind === 'share' ? (perkVisible('share', pst) || !pst.started ? 'go' : 'claimed') : ttPerks.status(p.kind);
+    const open = () => ui.h.perk(p.kind);
+    if (st === 'claim') {
+      tile(W - 68, y, p.key, ICON.coin, 'CLAIM', ['#3fe07c', '#13a04a'], open, '!');
+      ui.dirty = true; // keeps the glow alive
+      g.alpha(0.25 + 0.2 * Math.sin(g.time / 260));
+      g.rr(W - 72, y - 4, 58, 58, 16, 'rgba(63,224,124,.0)', '#7dffb0', 3);
+      g.alpha(1);
+    } else if (st === 'claimed') {
+      g.alpha(0.6);
+      tile(W - 68, y, p.key, ICON.check, p.kind === 'share' ? 'Shared' : fmtClock(ttPerks.nextReset()).slice(0, 5), ['#3a4363', '#262d48'], open, '');
+      g.alpha(1);
+    } else tile(W - 68, y, p.key, p.icon, p.label, p.col, open, p.badge && perkVisible(p.kind, pst) ? '!' : p.kind !== 'share' ? '!' : '');
   });
   // ---- bottom menu
   const col = column(g);

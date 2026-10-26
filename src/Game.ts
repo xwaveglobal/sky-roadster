@@ -229,6 +229,8 @@ export class Game {
   private finishArch = makeArch('finish');
   private sectionName = '';
   private livesLost = 0;
+  /** v5: the last crash used up no heart (final → CRASHED! / game over) */
+  private crashFinal = false;
   private finishShown = false;
   private runTime = 0;
   private superRolled = false;
@@ -354,6 +356,7 @@ export class Game {
       despawnObstacle: (o) => this.obstacleViews.despawn(o),
       spawnPickup: (p) => this.pickupViews.spawn(p),
       despawnPickup: (p) => this.pickupViews.despawn(p),
+      heartsFull: () => !!this.run && this.run.lives >= this.run.maxLives,
     };
     this.wirePlayerEvents();
 
@@ -2646,13 +2649,20 @@ export class Game {
 
     // ---- car blockades: the Roadster Jump showcase
     this.updateBlockade();
+    // v5 (owner): rank gates weigh what the player carries (Spawner.loadout — weights only, rows stay fair)
+    {
+      const lo = this.world.spawner.loadout;
+      lo.jump = run.superJumps + run.hyperJumps > 0;
+      lo.sos = run.escapes > 0;
+      lo.shield = !!run.shield;
+    }
 
     // ---- danger assist: big arrow when a crash is about to happen
     this.updateDanger(dt);
 
     // ---- state timers
-    if (this.state === 'dying' && this.stateT > (run.lives > 0 ? 1.0 : 1.6)) {
-      if (run.lives > 0) this.respawn();
+    if (this.state === 'dying' && this.stateT > (!this.crashFinal ? 1.0 : 1.6)) {
+      if (!this.crashFinal) this.respawn();
       else this.offerContinue();
     }
     if (this.state === 'respawn' && this.stateT > 0.2 && this.speedScale >= 1) {
@@ -3041,9 +3051,9 @@ export class Game {
     const ok = r.superJumps + r.hyperJumps + r.escapes === before - 1 && r.invulnT > 0;
     if (!ok) return false;
     this.autoRescueUsed = true;
-    const name = { super: 'ROADSTER', hyper: 'HYPER', escape: 'SOS' }[k];
+    const name = { super: 'ROADSTER JUMP', hyper: 'HYPER JUMP', escape: 'SOS ESCAPE' }[k];
     // short, non-blocking (top toast — never over the road ahead), no confirmation, game keeps running
-    this.ui.toastNow(`${k === 'escape' ? ICON.sos : ICON.rocket} <b>${name} AUTO ACTIVATED!</b>`, k === 'escape' ? '#ff5a3c' : k === 'hyper' ? '#ffc21a' : '#9b6bff');
+    this.ui.toastNow(`<b>LAST CHANCE!</b><br/>${k === 'escape' ? ICON.sos : ICON.rocket} <b>${name} AUTO-ACTIVATED</b> — saved you!`, k === 'escape' ? '#ff5a3c' : k === 'hyper' ? '#ffc21a' : '#9b6bff');
     return true;
   }
   /** shared entry point of the pre-race special (button = MANUAL, last-chance = AUTO_LAST_CHANCE) */
@@ -3157,6 +3167,7 @@ export class Game {
     const p = this.world.player;
     if (this.livesLost === 0 && this.run) this.firstLossExp = this.run.exp;
     this.livesLost++;
+    this.crashFinal = final;
     this.setState('dying');
     p.frozen = true;
     this.input.enabled = false;
@@ -3202,7 +3213,8 @@ export class Game {
     this.audio.play('respawn');
     this.vibrate(20);
     this.vehicle.boostKick(0.8);
-    if (!revived) this.ui.toast(`${ICON.heart} RESPAWN · ${this.run.lives} ${this.run.lives === 1 ? 'life' : 'lives'} left`, 'var(--red)');
+    // v5 (owner 2026-10-26): a heart saved the race — say so, big and clear
+    if (!revived) this.ui.toastNow(`${ICON.heart} <b>HEART USED!</b><br/>You're still racing · ${this.run.lives > 0 ? `${this.run.lives} ${ICON.heart} left` : 'no heart left — careful!'}`, 'var(--red)');
   }
 
   /** unused Roadster / HYPER / SOS charges at the finish line → bonus points (shown on the result) */

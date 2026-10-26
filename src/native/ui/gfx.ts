@@ -386,6 +386,21 @@ export class Gfx {
     const img = svgImage(svg, w * k, hh * k, color);
     this.ctx.drawImage(img, x + (size - w) / 2, y + (h - hh) / 2, w, hh);
   }
+  /** v5: has this image arrived (decoded)? — starts loading it if not */
+  imgReady(url: string): boolean {
+    let im = this.images.get(url);
+    if (!im) {
+      im = this.makeImage();
+      if (!im) return false;
+      im.onload = () => {
+        im._ok = true;
+        this.onImageLoad();
+      };
+      im.src = url;
+      this.images.set(url, im);
+    }
+    return !!(im._ok || (im.complete && im.width));
+  }
   img(url: string, x: number, y: number, w: number, h: number, mode: 'cover' | 'contain' | 'fill' = 'cover', r = 0) {
     if (this.dry || !url) return;
     let im = this.images.get(url);
