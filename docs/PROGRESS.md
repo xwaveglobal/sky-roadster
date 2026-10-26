@@ -26,6 +26,8 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
   - `World.hooks.heartsFull`: a heart on the road becomes a coin at 3 / 3.
 - **Rank gates**: `Spawner.loadout` (set every frame: jump / SOS / shield in hand) → gate weights `GATE.loadout`. With nothing in hand the hard push is `GATE.hardBoostBare` 1.2 (was 1.45 for everyone). Rows stay fair; tested in `phases.test.ts`: bare 43 % vs. with specials 50 % hard rows, no unavoidable rows.
 
+**Checks**: typecheck; `npm test` all green (new `perkclaims`, loadout-gate checks in `phases`); hs-check 0 / 0; native QA TikTok 31 / 31 (new `--only=perks`: GO → CLAIM → reward card → CLAIMED) and Android 26 / 26.
+
 **Owner to do**:
 - In the HS dashboard (Ads Config / rewards), set `tiktok_profile` and `tiktok_shortcut` to 1000 coins with `$limit: daily` (`tiktok.hs-dashboard.json`). Until then the dashboard's 300 / once wins.
 - Test Entry / Launch on a real phone. The in-game log (tap the version 5 × in Settings) shows `[perk]` lines with TikTok's answers.

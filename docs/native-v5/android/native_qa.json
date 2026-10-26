@@ -82,7 +82,7 @@
     "maxPlays": 3,
     "open": 30,
     "every": 1,
-    "live": false
+    "live": true
    }
   },
   {

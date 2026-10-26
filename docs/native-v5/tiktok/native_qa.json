@@ -84,7 +84,7 @@
     "maxPlays": 3,
     "open": 30,
     "every": 1,
-    "live": true
+    "live": false
    }
   },
   {
@@ -191,6 +191,35 @@
    "ok": true,
    "msg": "training: Skip always on screen",
    "data": true
+  },
+  {
+   "ok": true,
+   "msg": "Entry popup: GO first"
+  },
+  {
+   "ok": true,
+   "msg": "GO saves the tap (counts after a cold re-open)"
+  },
+  {
+   "ok": true,
+   "msg": "TikTok confirmed → CLAIM; the kit payment is held (wallet unchanged until CLAIM)",
+   "data": {
+    "w0": 18510,
+    "w1": 18510,
+    "st": "claim"
+   }
+  },
+  {
+   "ok": true,
+   "msg": "CLAIM adds 1000 coins",
+   "data": {
+    "w0": 18510,
+    "w2": 19510
+   }
+  },
+  {
+   "ok": true,
+   "msg": "after CLAIM: ✓ CLAIMED TODAY (dimmed) + countdown"
   },
   {
    "ok": true,
