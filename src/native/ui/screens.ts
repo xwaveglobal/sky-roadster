@@ -1,6 +1,7 @@
 /** v3 native UI — full screens (home, tracks, garage, missions, ranks, daily, shop…) */
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { PERK_ORDER, perkLayout, perkOnHome, perkVisible } from '../../meta/Perks.ts';
+import { LOADING_TINY } from './loadingTiny.ts';
 import { ttPerks } from '../perks.ts';
 import { fmtLeft as fmtClock } from '../../meta/PerkClaims.ts';
 import { C, Gfx, bar, button, card, fmt, iconBtn, panel, rankBadge, toggle } from './gfx.ts';
@@ -113,8 +114,14 @@ function loading(ui: UI, g: Gfx) {
   if (ready && !ui.loadImgAt) ui.loadImgAt = g.time;
   const k = ready ? Math.min(1, (g.time - ui.loadImgAt) / 250) : 0;
   if (k < 1) {
-    g.text('SKY', g.W / 2, g.H * 0.36, { size: 54, align: 'center', italic: true, color: '#ffffff', stroke: '#1a2a7a', strokeW: 6, noTr: true });
-    g.text('ROADSTER', g.W / 2, g.H * 0.36 + 56, { size: 44, align: 'center', italic: true, color: '#ffffff', stroke: '#1a2a7a', strokeW: 6, noTr: true });
+    // the art, faint (15 %), so the first frame is never a plain colour
+    if (g.imgReady(LOADING_TINY)) {
+      g.alpha(0.15 * (1 - k));
+      g.img(LOADING_TINY, 0, 0, g.W, g.H, 'cover');
+      g.alpha(1);
+    }
+    g.text('SKY', g.W / 2, g.H * 0.215, { size: 54, align: 'center', italic: true, color: '#ffffff', stroke: '#1a2a7a', strokeW: 6, noTr: true });
+    g.text('ROADSTER', g.W / 2, g.H * 0.215 + 56, { size: 44, align: 'center', italic: true, color: '#ffffff', stroke: '#1a2a7a', strokeW: 6, noTr: true });
     ui.dirty = true;
   }
   if (ready) {

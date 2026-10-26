@@ -13,7 +13,7 @@ Newest entry on top. Every AI session adds a short entry: what was done, what is
 - Rank gates weigh the items the player has.
 
 **Done**:
-- **Loading** (native): a bright sky gradient with "SKY ROADSTER" and a big bar is drawn from the very first frame. The owner's art (`loading.webp` 540×960 / 48 KB, TikTok `loading.jpg` 480×853 / 44 KB) fades in over it (`Gfx.imgReady`). The bar is bigger, with a glowing rim and "LOADING… NN%". The web `#boot` preview is the new art. Boot timing is in `GameGlobal.__boot` and the in-game log.
+- **Loading** (native): a bright sky gradient with "SKY ROADSTER" and a big bar is drawn from the very first frame, over a faint (15 %) 90×160 copy of the art carried inside game.js (`loadingTiny.ts`, 3.5 KB). The owner's art (`loading.webp` 540×960 / 48 KB, TikTok `loading.jpg` 480×853 / 44 KB) fades in over it (`Gfx.imgReady`). The bar is bigger, with a glowing rim and "LOADING… NN%". The web `#boot` preview is the new art. Boot timing is in `GameGlobal.__boot` and the in-game log.
 - **Entry / Launch**: `src/meta/PerkClaims.ts` (pure, tested: the game day starts at 06:00, no stacking, one claim a day) and `src/native/perks.ts`:
   - The kit's payment of `tiktok_profile` / `tiktok_shortcut` is moved from the wallet into `Save.tt.<kind>.pend`. CLAIM pays it and shows the big `rewardcard` overlay (+N, coins before → after).
   - "B": GO is saved, and after a cold re-open `hs.missionCheck` asks TikTok itself (`getEntranceMissionReward` / `getShortcutMissionReward`, read-only, logged as `[perk]`).
